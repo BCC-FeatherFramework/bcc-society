@@ -19,7 +19,7 @@ client_scripts {
 }
 
 server_scripts {
-    '@oxmysql/lib/MySQL.lua',
+    '@feather-mysql/lib/MySQL.lua',
     'server/helpers/functions.lua',
     'server/services/API.lua',
     'server/services/dbupdater.lua',
@@ -29,7 +29,7 @@ server_scripts {
 }
 
 dependencies {
-    'oxmysql',
+    'feather-mysql',
     'vorp_core',
     'feather-menu',
     'bcc-utils',

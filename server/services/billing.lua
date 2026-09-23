@@ -174,7 +174,7 @@ BccUtils.RPC:Register("bcc-society:RevokeReceipt", function(params, cb, src)
             devPrint("[RevokeReceipt] Receipt found with status: " .. tostring(bill.status))
 
             if bill.status == "PAID" then
-                MySQL.execute('DELETE FROM bcc_society_bills WHERE id = ?', {receiptId}, function()
+                exports['feather-mysql']:query('DELETE FROM bcc_society_bills WHERE id = ?', {receiptId}, function()
                     devPrint("[RevokeReceipt] Receipt deleted from DB. Removing item...")
                     exports.vorp_inventory:subItem(src, Config.bill_receiptitem, 1)
                     cb(true)
