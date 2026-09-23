@@ -1,0 +1,40 @@
+fx_version "adamant"
+games { "rdr3" }
+rdr3_warning "I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships."
+lua54 "yes"
+author "BCC Scripts"
+
+shared_scripts {
+    'config.lua',
+    'locale.lua',
+    'languages/*.lua'
+}
+
+client_scripts {
+    'client/helpers/functions.lua',
+    'client/helpers/*.lua',
+    'client/services/menus/*.lua',
+    'client/services/*.lua',
+    'client/main.lua'
+}
+
+server_scripts {
+    '@feather-mysql/lib/MySQL.lua',
+    'server/helpers/functions.lua',
+    'server/services/API.lua',
+    'server/services/dbupdater.lua',
+    'server/helpers/*.lua',
+    'server/services/*.lua',
+    'server/main.lua'
+}
+
+dependencies {
+    'feather-mysql',
+    'vorp_core',
+    'feather-menu',
+    'bcc-utils',
+    'vorp_character',
+    'vorp_inventory',
+}
+
+version '1.4.1'
