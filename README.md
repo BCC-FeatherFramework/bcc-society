@@ -1,174 +1,208 @@
 # BCC-Society
-> Welcome to **BCC-Society**, the ultimate script for managing societies in RedM! Thank you for your support!
 
-## Features
-- **Simple Configuration**: Easily customize your society setup.
-- **Effortless Translations**: Translate the script into different languages with ease.
-- **Highly Modular**: Each society is created with its own settings, minimizing the need for extensive configuration.
-- **Admin Management Menu**: Conveniently manage your society through an intuitive menu.
-- **Developer Exports**: Export data for further customization and analysis.
-- **Webhooks**: Stay connected with society and admin updates through webhooks.
-- **Safety and Security**: Built-in features ensure the safety and security of your society.
-- **Seamless Experience**: No need to relog, except for society deletion.
-- **Society Inventories**: Manage inventories for your society.
-- **Upgradeable Inventories**: Set Upgrades for inventories during society creation, that players can buy in thier menu later.
-- **Named Societies**: Give your society a unique name.
-- **Togglable Blip**: Easily toggle the blip for your society.
-- **Ledger System**: Keep track of society finances, store, and withdraw money with a ledger system.
-- **Employee Management**: Hire and manage employees for your society.
-- **Rank System**: Implement a rank system within your society.
-- **Payment System**: Manage payments within your society.
-- **Billing Command**: Easily handle billing within your society.
-- **Taxes**: Implement a tax system within your society.
-- **Version Checking**: Version Checking to keep you upto date!
-- **Society Jobs**: Each society has its own job that you set during creation, or change in the admin menu. Job Grade is set for each society Rank so each rank has its own job grade that the owner or employee with the manage rank permission can set/change.
-- **Toggle Society Jobs Duty**: Society jobs can be setup to allow for toggling being on and off duty(Not all jobs, just society jobs).
+> Societies (businesses) for RedM on the **Feather Framework**: owners, employees, ranks, duty, ledger, payroll, billing, taxes and storage.
 
-# Requirements:
-- VORP CORE
-- VORP INVENTORY
-- BCC-Utils version 1.0.9 and above
-- Feather Menu: https://github.com/FeatherFramework/feather-menu/releases
-- VORP CHARACTER
+Version **2.0.0** is the Feather rewrite. It keeps the original menus, page flows and translation keys. All ownership and state now live in the Feather domain resources:
 
-# Society API
+| Concern | Owner |
+|---|---|
+| Society identity | `feather-organizations` (one `business` organization per society) |
+| Ledger, wages, bills, taxes | `feather-economy` (the organization's treasury) |
+| Job, grade, duty, active job | `feather-jobs` |
+| Storage | `feather-inventory` (one shared container per society) |
+| Staff permission | `feather-authority` (`staff.society.manage`) |
+| Characters | `feather-core` sessions + `feather-character` |
 
-The Society API provides functionality for managing society data in a RedM environment. This API supports operations like retrieving society information, managing employees, handling society finances, and verifying job roles, offering a robust solution for society-related management.
+bcc-society keeps societies, ranks, rank permissions, memberships and the rank → grade mapping. It has no VORP, `bcc-utils` or oxmysql code.
 
-## Setup
+The rewrite plan, decisions and progress are in [FEATHER_REWRITE_PLAN.md](FEATHER_REWRITE_PLAN.md). The pre-rewrite code is kept in `[bcc]/bcc-society(old)`.
 
-The `SocietyAPI` is globally accessible within the script and can be retrieved using:
-```lua
-exports("getSocietyAPI", function() return SocietyAPI end)
-```
+---
 
 ## Features
 
-1. **Society Management**: Retrieve and manage society details, employees, ranks, and ledger information.
-2. **Employee Management**: Manage employee roles, check rank permissions, and retrieve rank details.
-3. **Financial Operations**: Add or deduct funds from the society ledger.
-4. **Miscellaneous Functions**: Retrieve all societies a character owns or is employed in, list all societies, and verify player job status.
+- **Societies:** staff create them where they stand, with a name, owner, job type, blip, tax and storage plan.
+- **Job types:** shared feather-jobs jobs from `Config.Jobs` (e.g. every gun store is `gunsmith`). Doors, crafting and housing can check "gunsmith, grade ≥ 10" without knowing which store.
+- **Ranks:** each rank has pay, permissions, and an explicit mapping to one grade of the society's job type.
+- **Employees:** hire, promote and fire through durable workflows that survive restarts. Employees can work at several societies.
+- **Duty:** `/onDuty`, `/offDuty`, `/switchjob`, `/jobManagement`. Duty is per assignment in feather-jobs. Logout, disconnect and shutdown put people off duty.
+- **Ledger:** deposit and withdraw between your wallet and the society treasury, gated by rank permission.
+- **Payroll:** wages accrue on the server only while on duty; employees collect them from the treasury.
+- **Billing:** `/bill` sends a bill; the customer accepts or declines before any money moves. `/receipts` lists paid receipts.
+- **Taxes:** paid from the treasury on `Config.taxDay`, once per month. A society that can't pay is reported, not deleted.
+- **Storage:** a shared feather-inventory container with paid upgrade stages.
+- **Blips and prompts:** through feather-toolkit.
+- **Translations:** English (`en_us`), Polish (`pl`) and Romanian (`ro`), registered through feather-core.
 
-## API Methods
+---
 
-### Society Management
+## Requirements
 
-- **`SocietyAPI:GetSociety(societyId)`**  
-  Retrieves a society object by its ID, which provides access to various functions for managing the society.
+Start these before `bcc-society`:
 
-    ```lua
-    local society = SocietyAPI:GetSociety(societyId)
-    if society then
-        local info = society:GetSocietyInfo()
-        print(info)
-    end
-    ```
+`feather-mysql`, `feather-core`, `feather-character`, `feather-notify`, `feather-toolkit`, `feather-menu-v2`, `feather-jobs`, `feather-economy`, `feather-inventory`, `feather-organizations`, `feather-authority`
 
-### Employee Management
+### Trust entries
 
-- **`society:GetSocietyEmployees()`**  
-  Fetches all employees associated with the society.
+bcc-society must be trusted by:
 
-    ```lua
-    local employees = society:GetSocietyEmployees()
-    if employees then
-        for _, employee in ipairs(employees) do
-            print(employee.employee_name)
-        end
-    end
-    ```
+| Resource | Entries |
+|---|---|
+| feather-jobs `config.lua` | `trustedReaders`, `trustedRegistrars`, `trustedAssigners`, `trustedAuditors` |
+| feather-organizations `config.lua` | `trustedCreators`, `trustedMutators`, `trustedReaders`; plus `feather-jobs` in `trustedReaders` |
+| feather-authority `config.lua` | `trustedReaders`, `trustedCapabilityRegistrars`, `trustedRoleCreators`, `trustedGrantors`, `trustedAssigners` |
+| feather-economy `config.lua` | `trustedTreasuryOperators`, `trustedReaders`, `trustedProvisioners`, `trustedTransactors` |
+| feather-admin `configs/service_policy.lua` | `['feather-jobs']['bcc-society']` and `['feather-organizations']['bcc-society']` |
 
-- **`society:CheckRankPermissions(rankName)`**  
-  Checks the permissions for a given rank within the society.
+Add `['bcc-society'] = true` to each listed group and keep the entries already there. Examples:
 
-    ```lua
-    local rankInfo = society:CheckRankPermissions("Manager")
-    if rankInfo then
-        print("Permissions:", rankInfo.permissions)
-    end
-    ```
-
-### Financial Management
-
-- **`society:AddMoneyToLedger(amount)`**  
-  Adds funds to the society's ledger.
-
-    ```lua
-    society:AddMoneyToLedger(1000)
-    ```
-
-- **`society:RemoveMoneyFromLedger(amount)`**  
-  Deducts funds from the society's ledger.
-
-    ```lua
-    society:RemoveMoneyFromLedger(500)
-    ```
-
-### Miscellaneous Functions
-
-- **`SocietyAPI.MiscAPI:GetAllSocietiesCharOwns(charIdentifier)`**  
-  Retrieves all societies owned by a character.
-
-    ```lua
-    local ownedSocieties = SocietyAPI.MiscAPI:GetAllSocietiesCharOwns(charIdentifier)
-    if ownedSocieties then
-        for _, society in ipairs(ownedSocieties) do
-            print(society.business_id, society.business_name)
-        end
-    end
-    ```
-
-- **`SocietyAPI.MiscAPI:GetAllSocietiesCharIsEmployedAt(charIdentifier)`**  
-  Fetches all societies where a character is employed.
-
-    ```lua
-    local employedSocieties = SocietyAPI.MiscAPI:GetAllSocietiesCharIsEmployedAt(charIdentifier)
-    if employedSocieties then
-        for _, society in ipairs(employedSocieties) do
-            print(society.business_id)
-        end
-    end
-    ```
-
-- **`SocietyAPI.MiscAPI:CheckIfPlayerHasJobAndIsOnDuty(jobName, playerSource)`**  
-  Verifies if a player has a specific job and is currently on duty.
-
-    ```lua
-    local isOnDuty = SocietyAPI.MiscAPI:CheckIfPlayerHasJobAndIsOnDuty("Police", playerSource)
-    print("Is On Duty:", isOnDuty)
-    ```
-
-## Example Usage
+**feather-jobs/config.lua** (already present in the shipped config):
 
 ```lua
--- Retrieve a society and get its information
-local society = SocietyAPI:GetSociety(1)
-if society then
-    print(society:GetSocietyInfo())
-
-    -- Add funds to the ledger
-    society:AddMoneyToLedger(500)
-
-    -- Retrieve employees
-    local employees = society:GetSocietyEmployees()
-    if employees then
-        for _, employee in ipairs(employees) do
-            print(employee.employee_name)
-        end
-    end
-end
-
--- Check all societies a character owns
-local charIdentifier = 1234
-local ownedSocieties = SocietyAPI.MiscAPI:GetAllSocietiesCharOwns(charIdentifier)
-if ownedSocieties then
-    for _, soc in ipairs(ownedSocieties) do
-        print(soc.business_id, soc.business_name)
-    end
-end
+Access = {
+    trustedReaders = { ['feather-jobs'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    trustedRegistrars = { ['feather-jobs'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    privilegedRegistrars = { ['feather-admin'] = true },
+    trustedAssigners = { ['feather-jobs'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    privilegedAssigners = { ['feather-admin'] = true },
+    trustedAuditors = { ['feather-jobs'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    privilegedAuditors = { ['feather-admin'] = true }
+}
 ```
 
-The Society API streamlines society management, making it easier to handle society operations in RedM scripts.
+**feather-organizations/config.lua** (`feather-jobs` also reads, to validate employer organizations):
 
-## Special thanks
-Thanks to Jake for the base of this script.
+```lua
+Access = {
+    trustedCreators = { ['feather-organizations'] = true, ['feather-admin'] = true, ['feather-shops'] = true,
+        ['bcc-society'] = true },
+    trustedMutators = { ['feather-organizations'] = true, ['feather-admin'] = true, ['feather-shops'] = true,
+        ['bcc-society'] = true },
+    -- privilegedMutators, trustedAuditors, privilegedAuditors unchanged
+    trustedReaders = {
+        ['feather-organizations'] = true,
+        ['feather-admin'] = true,
+        ['feather-economy'] = true,
+        ['feather-shops'] = true,
+        ['feather-jobs'] = true,
+        ['bcc-society'] = true
+    }
+}
+```
+
+**feather-authority/config.lua** (all five groups; the society staff role and its capability are registered by bcc-society):
+
+```lua
+Access = {
+    trustedReaders = { ['feather-authority'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    trustedCapabilityRegistrars = { ['feather-authority'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    trustedRoleCreators = { ['feather-authority'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    trustedGrantors = { ['feather-authority'] = true, ['feather-admin'] = true, ['bcc-society'] = true },
+    trustedAssigners = { ['feather-authority'] = true, ['feather-admin'] = true, ['bcc-society'] = true }
+}
+```
+
+**feather-economy/config.lua** (keep the existing entries in each group). `trustedTreasuryOperators`
+exists only in a feather-economy build that includes `EnsureOperatedTreasury`; without it the
+society ledger, payroll, billing and taxes are unavailable.
+
+```lua
+Access = {
+    -- Callers that may bind and operate an organization treasury.
+    -- They must also be in trustedTransactors.
+    trustedTreasuryOperators = { ['bcc-society'] = true },
+    trustedReaders = { ['feather-economy'] = true, --[[ ... ]] ['bcc-society'] = true },
+    trustedProvisioners = { ['feather-economy'] = true, --[[ ... ]] ['bcc-society'] = true },
+    trustedTransactors = { ['feather-economy'] = true, --[[ ... ]] ['bcc-society'] = true }
+}
+```
+
+**feather-admin/configs/service_policy.lua** (the outer key is the domain that asks for the policy
+decision, the inner key is the calling resource; grant only the actions bcc-society uses):
+
+```lua
+Config.servicePolicy = {
+    ['feather-organizations'] = {
+        -- existing feather-shops / feather-organizations / feather-admin entries
+        ['bcc-society'] = {
+            ['organizations.organization.create']=true,
+            ['organizations.organization.update']=true,
+            ['organizations.organization.dissolve']=true
+        }
+    },
+    ['feather-jobs'] = {
+        ['bcc-society'] = {
+            ['jobs.definition.manage']=true,
+            ['jobs.assignment.manage']=true
+        }
+    }
+}
+```
+
+Then restart the changed resources in order, and bcc-society last:
+
+```text
+restart feather-economy
+restart feather-organizations
+restart feather-authority
+restart feather-jobs
+restart feather-admin
+ensure bcc-society
+```
+
+Both problems return `authorization_denied`. A missing trust entry says the calling resource is not
+trusted; a missing service policy grant says the policy denied it, with `policyCode=service_forbidden`
+in the details where the resource reports it.
+
+---
+
+## Admin
+
+| Command | Who | Purpose |
+|---|---|---|
+| `/createSociety` | Staff | Create a society at your position |
+| `/manageSocieties` | Staff | Rename, retax, re-blip or dissolve societies |
+| `SocietyAdminGrant <id>` / `SocietyAdminRevoke <id>` | Console | Give or remove the society staff role |
+| `SocietyReconcile` | Console | List hire/promote/fire workflows that are still pending or failed |
+| `SocietyLiveTest <owner id> [employee id]` | Console, dev mode | **Mutating** end-to-end test on a throwaway society |
+
+Staff means Feather Admin owners or administrators, holders of `staff.society.manage`, or characters with a job listed in `Config.AllowedJobs`.
+
+The job type is fixed after creation. Dissolving a society ends every member's job, dissolves its organization and keeps the row as history.
+
+---
+
+## Configuration
+
+See [config.lua](config.lua). The parts specific to Feather:
+
+- `Config.Jobs`: the job types and their grades (keys and ordinals are stable identifiers; add new ones rather than renaming). `ownerGrade` is the grade the society owner holds.
+- `Config.Admin`: the Authority capability, role and accepted Feather Admin staff roles.
+- `Config.NotifyStyle`: the feather-notify style for player messages.
+- `Config.WorkflowPollMs`: how often pending Jobs workflows are retried.
+
+---
+
+## Society API
+
+`exports['bcc-society']:getSocietyAPI()` returns the same `SocietyAPI` as before, with these changes:
+
+- Character IDs are Feather UUIDs.
+- `society:GetEmployeeRank(charId)` returns the plain rank name (there are no `off` prefixes).
+- `society:GetLedgerAmount()` reads the Economy treasury balance, in dollars.
+- `AddMoneyToLedger` and `RemoveMoneyFromLedger` are removed: money only moves through Economy.
+- `SocietyAPI.MiscAPI:CheckIfPlayerHasJobAndIsOnDuty(jobKey, source)` asks feather-jobs.
+
+For job checks in other resources, prefer feather-jobs directly:
+
+```lua
+local result = exports['feather-jobs']:CheckAssignment({
+    characterId = characterId,
+    jobKey = 'gunsmith',
+    minGradeOrdinal = 10,
+    dutyState = 'on_duty'
+})
+if result.ok and result.value.matched then
+    -- allowed by your own rule
+end
+```

@@ -36,21 +36,35 @@ function CreateSocietyMenu()
         societyName = data.value
     end)
 
-    createSocietyPage:RegisterElement("input", {
+    -- Job types come from Config.Jobs (registered in feather-jobs by the server).
+    createSocietyPage:RegisterElement("button", {
         label = _U("setSocietyJob"),
-        placeholder = _U("placeholder"),
         style = {}
-    }, function(data)
-        societyJob = data.value
-    end)
-
-    local maxJobGrade = 5
-    createSocietyPage:RegisterElement("input", {
-        label = _U("setSocietyMaxJobGrade"),
-        placeholder = "0",
-        style = {}
-    }, function(data)
-        maxJobGrade = tonumber(data.value) or 5
+    }, function()
+        local jobPage = BCCSocietyMenu:RegisterPage("bcc-society:jobTypePage")
+        jobPage:RegisterElement("header", {
+            value = _U("setSocietyJob"),
+            slot = "header",
+            style = {}
+        })
+        for jobKey, job in pairs(Config.Jobs) do
+            jobPage:RegisterElement("button", {
+                label = job.label,
+                style = {}
+            }, function()
+                societyJob = jobKey
+                Notify(_U("jobSet") .. job.label, "success", 4000)
+                createSocietyPage:RouteTo()
+            end)
+        end
+        jobPage:RegisterElement("button", {
+            label = _U("back"),
+            slot = "footer",
+            style = {}
+        }, function()
+            createSocietyPage:RouteTo()
+        end)
+        jobPage:RouteTo()
     end)
 
     createSocietyPage:RegisterElement("input", {
@@ -194,23 +208,22 @@ function CreateSocietyMenu()
     }, function()
         -- Set default values if not already set
         if societyBlipHash == "" then societyBlipHash = "blip_shop_store" end
-        if not tonumber(maxJobGrade) or maxJobGrade == nil or maxJobGrade <= 0 then maxJobGrade = 5 end
     
         -- Check if all necessary fields are filled
-        if societyName ~= "" and societyOwnerCharId ~= nil and societyOwnerSource ~= nil 
-           and societyTaxAmount ~= "" and societyInventoryLimit ~= "" then
+        if societyName ~= "" and societyOwnerCharId ~= nil and societyOwnerSource ~= nil
+           and societyJob ~= "" and societyTaxAmount ~= "" and societyInventoryLimit ~= "" then
            
             -- Trigger the server event with the appropriate parameters
             if #stages > 0 then
                 TriggerServerEvent('bcc-society:InsertSocietyToDB', societyName, societyOwnerCharId, 
                     societyOwnerSource, societyTaxAmount, societyInventoryLimit, 
-                    GetEntityCoords(PlayerPedId()), societyBlipHash, json.encode(stages), 
-                    societyJob, maxJobGrade)
+                    GetEntityCoords(PlayerPedId()), societyBlipHash, json.encode(stages),
+                    societyJob)
             else
                 TriggerServerEvent('bcc-society:InsertSocietyToDB', societyName, societyOwnerCharId, 
                     societyOwnerSource, societyTaxAmount, societyInventoryLimit, 
-                    GetEntityCoords(PlayerPedId()), societyBlipHash, "none", 
-                    societyJob, maxJobGrade)
+                    GetEntityCoords(PlayerPedId()), societyBlipHash, "none",
+                    societyJob)
             end
             
             BCCSocietyMenu:Close()

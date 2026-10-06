@@ -1,6 +1,6 @@
-FeatherMenu = exports['feather-menu'].initiate()
-Core = exports.vorp_core:GetCore()
-BccUtils = exports['bcc-utils'].initiate()
+-- feather-menu-v2 through the compatibility layer in client/feather/menu_v2.lua,
+-- so the existing v1-style menu code keeps working unchanged.
+FeatherMenu = FeatherMenuV2Compat
 
 --Global Vars
 BCCSocietyMenu = FeatherMenu:RegisterMenu('BCC-Society:Menu', {
@@ -54,51 +54,11 @@ else
     function devPrint(...) end
 end
 
-function Notify(message, typeOrDuration, maybeDuration)
-    local opts = Config.NotifyOptions or {}
-    local notifyType = opts.type
-    local notifyDuration = opts.autoClose
-    local notifyTransition = opts.transition
-    local notifyPosition = opts.position
-    local hideProgress = opts.hideProgressBar
-
-    -- Detect which argument is which
-    if type(typeOrDuration) == "string" then
-        notifyType = typeOrDuration
-        notifyDuration = tonumber(maybeDuration) or notifyDuration
-    elseif type(typeOrDuration) == "number" then
-        notifyDuration = typeOrDuration
-    end
-
-    if Config.Notify == "feather-menu" then
-        FeatherMenu:Notify({
-            message = message,
-            type = notifyType,
-            autoClose = notifyDuration,
-            position = notifyPosition,
-            transition = notifyTransition,
-            icon = true,
-            hideProgressBar = hideProgress,
-            rtl = false,
-            style = opts.style or {},
-            toastStyle = opts.toastStyle or {},
-            progressStyle = opts.progressStyle or {}
-        })
-    elseif Config.Notify == "vorp-core" then
-        -- Only message and duration supported
-        Core.NotifyRightTip(message, notifyDuration)
-    else
-        print("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
-    end
-end
-
-BccUtils.RPC:Register("bcc-society:NotifyClient", function(data)
-    Notify(data.message, data.type, data.duration)
-end)
+-- Notify(message, type, duration) lives in client/feather/init.lua (feather-notify).
 
 -- Function to create and display the player list menu
 function GetPlayerListMenuPage(exclusionList, playerChosenCbFunct, backButtonCbFunct)
-    local allPlayers = BccUtils.RPC:CallAsync("BCC-Society:GetPlayers")
+    local allPlayers = FeatherRPC:CallAsync("BCC-Society:GetPlayers")
     --print("All Players Data:", json.encode(allPlayers))  -- Confirm player data
 
     if not allPlayers or next(allPlayers) == nil then
@@ -157,6 +117,30 @@ function GetPlayerListMenuPage(exclusionList, playerChosenCbFunct, backButtonCbF
         style = {}
     })
     return playerListMenupage
+end
+
+-- Dropdown of the grades a rank may map to (the society job type's grades,
+-- owner grade excluded). Calls onSelect(gradeKey); preselects `current`.
+function AddGradePicker(page, businessId, current, onSelect)
+    local grades = FeatherRPC:CallAsync("bcc-society:GetRankGrades", { socId = businessId })
+    if type(grades) ~= "table" or #grades == 0 then
+        page:RegisterElement("textdisplay", { value = _U("noGrades"), style = {} })
+        return
+    end
+    local options, start = {}, 1
+    for index, grade in ipairs(grades) do
+        options[index] = { label = grade.label, key = grade.key }
+        if grade.key == current then start = index end
+    end
+    onSelect(options[start].key)
+    page:RegisterElement("dropdown", {
+        label = _U("rankJobGrade"),
+        options = options,
+        start = start,
+        style = {}
+    }, function(data)
+        if data.value and data.value.key then onSelect(data.value.key) end
+    end)
 end
 
 function IsPlayerAdmin()

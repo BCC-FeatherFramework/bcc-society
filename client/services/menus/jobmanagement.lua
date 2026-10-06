@@ -5,7 +5,7 @@ RegisterCommand(Config.openJobManagementMenuCommandName, function()
         slot = "header",
         style = {}
     })
-    local jobs = BccUtils.RPC:CallAsync("bcc-society:GetAllSocietyJobsPlayerEmployedAt", nil)
+    local jobs = FeatherRPC:CallAsync("bcc-society:GetAllSocietyJobsPlayerEmployedAt", nil)
     if jobs then
         for _, v in ipairs(jobs) do
             local ranks = v.ranks or {}

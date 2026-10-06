@@ -4,7 +4,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
     local employeeData = nil
     local isOwner = IsSocietyOwner(societyData.business_id)
     if not isOwner then
-        employeeData = BccUtils.RPC:CallAsync("bcc-society:GetEmployeeData", {socId = societyData.business_id, recType = "rankData"})
+        employeeData = FeatherRPC:CallAsync("bcc-society:GetEmployeeData", {socId = societyData.business_id, recType = "rankData"})
     end
 
     local manageSocietyPage = BCCSocietyMenu:RegisterPage("bcc-society:manageSocietyPage")
@@ -13,14 +13,14 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
         slot = "header",
         style = {}
     })
-    if isOwner or employeeData ~= nil and employeeData ~= false and employeeData.rank_can_edit_ranks == "true" then
+    if not isOwner and employeeData then
         -- Add 'Collect Payment' button in the society menu
         manageSocietyPage:RegisterElement("button", {
             label = _U('collectPayment'),
             style = {}
         }, function()
             -- Request the payment amount using a callback
-            BccUtils.RPC:Call("bcc-society:GetPaymentAmount", {}, function(paymentAmount)
+            FeatherRPC:Call("bcc-society:GetPaymentAmount", { socId = societyData.business_id }, function(paymentAmount)
                 if not paymentAmount then
                     Notify(_U('nothingToCollect'), "error", 4000)
                     return
@@ -52,7 +52,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     style = {}
                 }, function()
                     -- Trigger the server event to collect payment for the player
-                    TriggerServerEvent('bcc-society:CollectPayment')
+                    TriggerServerEvent('bcc-society:CollectPayment', societyData.business_id)
                     manageSocietyPage:RouteTo()
                 end)
 
@@ -70,6 +70,8 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
             end)
         end)
 
+    end
+    if isOwner or employeeData ~= nil and employeeData ~= false and employeeData.rank_can_edit_ranks == "true" then
         manageSocietyPage:RegisterElement("button", {
             label = _U("ranks"),
             style = {}
@@ -88,7 +90,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                 style = {}
             }, function()
                 local addRankPage = BCCSocietyMenu:RegisterPage("bcc-society:addRankPage")
-                local toggleBlip, withrdraw, deposit, editWebhook, editRanks, manageEmployees, openInv, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob = "false", 'false', 'false', 'false', 'false', 'false', 'false', 'false', 0, 'false', 'false'
+                local toggleBlip, withrdraw, deposit, editRanks, manageEmployees, openInv, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob = "false", 'false', 'false', 'false', 'false', 'false', 'false', nil, 'false', 'false'
                 local rankLabel -- New variable for rank_label
             
                 addRankPage:RegisterElement("header", {
@@ -121,12 +123,8 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     rankPay = data.value
                 end)
             
-                addRankPage:RegisterElement("input", {
-                    label = _U("rankJobGrade"),
-                    placeholder = _U("placeholder"),
-                    style = {}
-                }, function(data)
-                    rankJobGrade = data.value
+                AddGradePicker(addRankPage, societyData.business_id, nil, function(gradeKey)
+                    rankJobGrade = gradeKey
                 end)
             
                 addRankPage:RegisterElement("input", {
@@ -150,13 +148,6 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     start = false
                 }, function(data)
                     canBillPlayers = data.value and "true" or "false"
-                end)
-            
-                addRankPage:RegisterElement("toggle", {
-                    label = _U("canEditWebhook"),
-                    start = false
-                }, function(data)
-                    editWebhook = data.value and "true" or "false"
                 end)
             
                 addRankPage:RegisterElement('toggle', {
@@ -218,11 +209,8 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     slot = "footer",
                     style = {}
                 }, function()
-                    if rankName ~= nil and rankLabel ~= nil and rankPay ~= nil and tonumber(rankPay) > -1 and payIncrement ~= nil and tonumber(payIncrement) > 0 then
-                        if tonumber(societyData.max_job_grade) <= tonumber(rankJobGrade) then
-                            rankJobGrade = tonumber(societyData.max_job_grade) - 1 -- Preventing the rank from being the same as the owner
-                        end
-                        TriggerServerEvent("bcc-society:RankManagement", "add", societyData.business_id, rankName, rankLabel, rankPay, payIncrement, toggleBlip, withrdraw, deposit, editRanks, manageEmployees, openInv, editWebhook, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob)
+                    if rankName ~= nil and rankLabel ~= nil and tonumber(rankPay) and tonumber(rankPay) > -1 and tonumber(payIncrement) and tonumber(payIncrement) > 0 and rankJobGrade then
+                        TriggerServerEvent("bcc-society:RankManagement", "add", societyData.business_id, rankName, rankLabel, rankPay, payIncrement, toggleBlip, withrdraw, deposit, editRanks, manageEmployees, openInv, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob)
                         ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     else
                         Notify(_U("fillAllFields"), "error", 4000)
@@ -248,7 +236,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                 label = _U("viewRanks"),
                 style = {}
             }, function()
-                local retval = BccUtils.RPC:CallAsync("bcc-society:GetAllRanks", {socId = societyData.business_id})
+                local retval = FeatherRPC:CallAsync("bcc-society:GetAllRanks", {socId = societyData.business_id})
                 if retval then
                     local viewRanksPage = BCCSocietyMenu:RegisterPage("bcc-society:viewRanksPage")
                     viewRanksPage:RegisterElement("header", {
@@ -262,7 +250,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                             style = {}
                         }, function()
                             local individualRankPage = BCCSocietyMenu:RegisterPage("bcc-society:individualRankPage")
-                            local toggleBlip, withrdraw, deposit, editRanks, manageEmployees, openInv, editWebhook, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob = v.rank_can_toggle_blip, v.rank_can_withdraw, v.rank_can_deposit, v.rank_can_edit_ranks, v.rank_can_manage_employees, v.rank_can_open_inventory, v.rank_can_edit_webhook_link, v.rank_can_manage_store, v.society_job_rank, v.rank_can_bill_players, v.rank_can_switch_job
+                            local toggleBlip, withrdraw, deposit, editRanks, manageEmployees, openInv, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob = v.rank_can_toggle_blip, v.rank_can_withdraw, v.rank_can_deposit, v.rank_can_edit_ranks, v.rank_can_manage_employees, v.rank_can_open_inventory, v.rank_can_manage_store, v.job_grade, v.rank_can_bill_players, v.rank_can_switch_job
                             if canManageStore ~= "true" and canManageStore ~= "false" then
                                 canManageStore = "false"
                             end
@@ -307,12 +295,8 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                             }, function(data)
                                 payIncrementUpdate = data.value
                             end)
-                            individualRankPage:RegisterElement("input", {
-                                label = _U("rankJobGrade"),
-                                placeholder = _U("placeholder"),
-                                style = {}
-                            }, function(data)
-                                rankJobGrade = data.value
+                            AddGradePicker(individualRankPage, societyData.business_id, rankJobGrade, function(gradeKey)
+                                rankJobGrade = gradeKey
                             end)
                             local stringToBoolean = { ["true"] = true, ["false"] = false, ["1"] = true, ["0"] = false }
                             individualRankPage:RegisterElement('toggle', {
@@ -333,16 +317,6 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                                     canBillPlayers = "true"
                                 else
                                     canBillPlayers = "false"
-                                end
-                            end)
-                            individualRankPage:RegisterElement("toggle", {
-                                label = _U("canEditWebhook"),
-                                start = stringToBoolean[editWebhook]
-                            }, function(data)
-                                if data.value then
-                                    editWebhook = "true"
-                                else
-                                    editWebhook = "false"
                                 end
                             end)
 
@@ -431,14 +405,11 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                                 local payIncrementNumber = tonumber(payIncrementUpdate)
 
                                 if payIncrementNumber ~= nil and rankPayNumber ~= nil then
-                                    if tonumber(societyData.max_job_grade) <= tonumber(rankJobGrade) then
-                                        rankJobGrade = tonumber(societyData.max_job_grade) - 1 -- Preventing the rank from being the same as the owner
-                                    end
 
                                     -- Use the existing `v.rank_label` for `rankLabel` if it wasn’t modified
                                     local rankLabel = v.rank_label -- Replace "Default Label" if a different default is preferred
 
-                                    TriggerServerEvent('bcc-society:RankManagement', "update", societyData.business_id, v.rank_name, rankLabel, rankPayNumber, payIncrementNumber, toggleBlip, withrdraw, deposit, editRanks, manageEmployees, openInv, editWebhook, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob)
+                                    TriggerServerEvent('bcc-society:RankManagement', "update", societyData.business_id, v.rank_name, rankLabel, rankPayNumber, payIncrementNumber, toggleBlip, withrdraw, deposit, editRanks, manageEmployees, openInv, canManageStore, rankJobGrade, canBillPlayers, canSwitchJob)
                                     ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                                 else
                                     Notify(_U("fillAllFields"), "error", 4000)
@@ -532,13 +503,13 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                 label = _U("toggleOn"),
                 style = {}
             }, function()
-                TriggerServerEvent("bcc-society:ServerSyncBlips", societyData.business_name, societyData.blip_hash, societyCoordsVector3, societyData.business_id, false)
+                TriggerServerEvent("bcc-society:ServerSyncBlips", societyData.business_id, false)
             end)
             toggleBlipPage:RegisterElement("button", {
                 label = _U("toggleOff"),
                 style = {}
             }, function()
-                TriggerServerEvent("bcc-society:ServerSyncBlips", societyData.business_name, societyData.blip_hash, societyCoordsVector3, societyData.business_id, true)
+                TriggerServerEvent("bcc-society:ServerSyncBlips", societyData.business_id, true)
             end)
 
             toggleBlipPage:RegisterElement("line", {
@@ -575,7 +546,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
             })
 
             ledgerPage:RegisterElement("subheader", {
-                value = _U("ledgerAmount") .. BccUtils.RPC:CallAsync("bcc-society:GetLedgerData", {socId = societyData.business_id}),
+                value = _U("ledgerAmount") .. FeatherRPC:CallAsync("bcc-society:GetLedgerData", {socId = societyData.business_id}),
                 slot = "header",
                 style = {}
             })
@@ -670,7 +641,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                 slot = "header",
                 style = {}
             })
-            local stageData = BccUtils.RPC:CallAsync("bcc-society:GetInventoryStages", {socId = societyData.business_id})
+            local stageData = FeatherRPC:CallAsync("bcc-society:GetInventoryStages", {socId = societyData.business_id})
             inventoryPage:RegisterElement("subheader", {
                 value = _U("currentStage") .. tostring(stageData.inventory_current_stage),
                 slot = "header",
@@ -691,7 +662,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     label = _U("upgradeStage") .. tostring(tonumber(stageData.nextStage.stage)) .. _U("upgradeFor") .. tostring(stageData.nextStage.cost) .. _U("upgradeGainSlots") .. tostring(stageData.nextStage.slotIncrease),
                     style = {}
                 }, function()
-                    if BccUtils.RPC:CallAsync("bcc-society:UpgradeInventory", {socId = societyData.business_id, cost = stageData.nextStage.cost, nextStage = stageData.nextStage.stage}) then
+                    if FeatherRPC:CallAsync("bcc-society:UpgradeInventory", {socId = societyData.business_id, cost = stageData.nextStage.cost, nextStage = stageData.nextStage.stage}) then
                         Notify(_U("inventoryUpgraded"), "success", 4000)
                         ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     else
@@ -726,7 +697,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
             label = _U("manageEmployees"),
             style = {}
         }, function()
-            --local employeesToExclude = BccUtils.RPC:CallAsync("bcc-society:GetAllEmployeesData", {socId = societyData.business_id, recType = "hire"}) -- This has to be here as if it is inside of the same function we call the GetPlayerlistmenu function it will not work and will say callback not registered (Believe its something to do with context investigate more)
+            --local employeesToExclude = FeatherRPC:CallAsync("bcc-society:GetAllEmployeesData", {socId = societyData.business_id, recType = "hire"}) -- This has to be here as if it is inside of the same function we call the GetPlayerlistmenu function it will not work and will say callback not registered (Believe its something to do with context investigate more)
             local employeePage = BCCSocietyMenu:RegisterPage("bcc-society:employeePage")
             employeePage:RegisterElement("header", {
                 value = _U("manageEmployees"),
@@ -767,7 +738,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                 label = _U("viewEmployees"),
                 style = {}
             }, function()
-                local employees = BccUtils.RPC:CallAsync("bcc-society:GetAllEmployeesData", {socId = societyData.business_id, recType = "viewEmployees"})
+                local employees = FeatherRPC:CallAsync("bcc-society:GetAllEmployeesData", {socId = societyData.business_id, recType = "viewEmployees"})
                 if employees then
                     if #employees > 0 then
                         local viewEmployeesPage = BCCSocietyMenu:RegisterPage("bcc-society:viewEmployeesPage")
@@ -779,7 +750,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
 
                         for k, v in pairs(employees) do
                             viewEmployeesPage:RegisterElement("button", {
-                                label = v.employeeName,
+                                label = v.status == "active" and v.employeeName or (v.employeeName .. " (" .. _U("status_" .. tostring(v.status)) .. ")"),
                                 style = {}
                             }, function()
                                 local individualEmployeePage = BCCSocietyMenu:RegisterPage("bcc-society:individualEmployeePage")
@@ -824,7 +795,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                                     label = _U("changeEmployeeRank"),
                                     style = {}
                                 }, function()
-                                    local ranks = BccUtils.RPC:CallAsync("bcc-society:GetAllRanks", {socId = societyData.business_id})
+                                    local ranks = FeatherRPC:CallAsync("bcc-society:GetAllRanks", {socId = societyData.business_id})
                                     local changeRankPage = BCCSocietyMenu:RegisterPage("bcc-society:changeRankPage")
                                     changeRankPage:RegisterElement("header", {
                                         value = _U("changeEmployeeRank"),
@@ -909,61 +880,6 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
             employeePage:RouteTo()
         end)
     end
-    if isOwner or employeeData ~= nil and employeeData ~= false and employeeData.rank_can_edit_webhook_link == "true" then
-        manageSocietyPage:RegisterElement("button", {
-            label = _U("editWebhook"),
-            style = {}
-        }, function()
-            local editWebhookPage = BCCSocietyMenu:RegisterPage("bcc-society:editWebhookPage")
-            editWebhookPage:RegisterElement("header", {
-                value = _U("editWebhook"),
-                slot = "header",
-                style = {}
-            })
-            local webhookLink = ""
-            editWebhookPage:RegisterElement('input', {
-                label = _U("setWebhook"),
-                placeholder = _U("placeholder"),
-                style = {}
-            }, function(data)
-                webhookLink = data.value
-            end)
-            editWebhookPage:RegisterElement("line", {
-                slot = 'footer',
-                style = {}
-            })
-            editWebhookPage:RegisterElement("button", {
-                label = _U("confirm"),
-                slot = 'footer',
-                style = {}
-            }, function()
-                if webhookLink ~= "" then
-                    TriggerServerEvent("bcc-society:EditWebhookLink", societyData.business_id, webhookLink)
-                    societyData.webhook_link = webhookLink
-                    Notify(_U("changed"), "success", 4000)
-                    ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
-                else
-                    Notify(_U("fillAllFields"), "error", 4000)
-                end
-            end)
-
-            editWebhookPage:RegisterElement("button", {
-                label = _U("back"),
-                slot = 'footer',
-                style = {}
-            }, function()
-                manageSocietyPage:RouteTo()
-            end)
-
-            editWebhookPage:RegisterElement("bottomline", {
-                slot = 'footer',
-                style = {}
-            })
-
-            editWebhookPage:RouteTo()
-        end)
-    end
-
     BCCSocietyMenu:Open({
         startupPage = manageSocietyPage
     })

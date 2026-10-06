@@ -1,7 +1,7 @@
 RegisterCommand(Config.adminMenuCommandName, function()
     if IsPlayerAdmin() then
-        local societies = BccUtils.RPC:CallAsync("bcc-society:GetAllSocieties")
-        if #societies > 0 then
+        local societies = FeatherRPC:CallAsync("bcc-society:GetAllSocieties")
+        if type(societies) == "table" and #societies > 0 then
             local adminPage = BCCSocietyMenu:RegisterPage("bcc-society:adminPage")
             adminPage:RegisterElement("header", {
                 value = _U("adminMenu"),
@@ -72,14 +72,13 @@ RegisterCommand(Config.adminMenuCommandName, function()
                     }, function(data)
                         name = data.value
                     end)
+                    -- The job type is fixed after creation (assignments and rank grades depend on it).
                     local job = v.society_job
-                    indivudalSocietyPage:RegisterElement("input", {
-                        label = _U("changeJob"),
-                        placeholder = _U("placeholder"),
+                    local jobConfig = Config.Jobs[job]
+                    indivudalSocietyPage:RegisterElement("textdisplay", {
+                        value = _U("societyJobType") .. (jobConfig and jobConfig.label or tostring(job)),
                         style = {}
-                    }, function(data)
-                        job = data.value
-                    end)
+                    })
                     local invLimit = v.inv_limit
                     indivudalSocietyPage:RegisterElement("input", {
                         label = _U("invLimitChange"),

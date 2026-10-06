@@ -1,4 +1,4 @@
-BccUtils.RPC:Register("bcc-society:OpenReceiptMenu", function(params)
+FeatherRPC:Register("bcc-society:OpenReceiptMenu", function(params)
     local myServerId = GetPlayerServerId(PlayerId())
     if params and params._target and params._target ~= myServerId then
         return -- Ignore if not meant for this player
@@ -60,7 +60,7 @@ function OpenReceiptMenu(receipt)
         style = {}
     }, function()
         if receipt and receipt.id then
-            BccUtils.RPC:Call("bcc-society:RevokeReceipt", {
+            FeatherRPC:Call("bcc-society:RevokeReceipt", {
                 receiptId = receipt.id
             }, function(success, msg)
                 if success then
@@ -141,17 +141,17 @@ function OpenBillingMenu(societyData)
             if not string.find(billAmount, "-") and not string.find(billAmount, "'") and not string.find(billAmount, '"') then
                 devPrint("[BillingCommand] Input is clean. Sending RPC: BillPlayer")
 
-                BccUtils.RPC:Call("bcc-society:BillPlayer", {
+                FeatherRPC:Call("bcc-society:BillPlayer", {
                     playerServerId = data.source,
                     amount = billAmount,
                     description = billDescription,
                     societyId = societyData.business_id -- Add this!
                 }, function(success, errorMsg)
                     if success then
-                        devPrint("[BillingCommand] Billing successful.")
-                        Notify(_U("billSuccess"), "success", 4000)
+                        devPrint("[BillingCommand] Bill sent.")
+                        Notify(_U("billSent"), "success", 4000)
                     else
-                        devPrint("[BillingCommand] Billing failed:" .. errorMsg)
+                        devPrint("[BillingCommand] Billing failed:" .. tostring(errorMsg))
                         Notify(errorMsg or _U("billingFailed"), "error", 4000)
                     end
                 end)
@@ -175,3 +175,80 @@ function OpenBillingMenu(societyData)
         startupPage = playerListPage
     })
 end
+
+-- A society billed this player: they accept or decline before any money moves.
+FeatherRPC:Register("bcc-society:BillRequest", function(bill)
+    local billRequestPage = BCCSocietyMenu:RegisterPage("bcc-society:billRequestPage")
+    billRequestPage:RegisterElement("header", {
+        value = _U("billRequest"),
+        slot = "header",
+        style = {}
+    })
+    billRequestPage:RegisterElement("textdisplay", {
+        value = _U("receiptSociety") .. " " .. tostring(bill.society) .. "\n"
+            .. _U("receiptFrom") .. " " .. tostring(bill.biller) .. "\n"
+            .. _U("receiptAmount") .. " $" .. tostring(bill.amount) .. "\n"
+            .. _U("receiptDescription") .. " " .. tostring(bill.description),
+        style = {}
+    })
+    billRequestPage:RegisterElement("line", {
+        slot = "footer",
+        style = {}
+    })
+    billRequestPage:RegisterElement("button", {
+        label = _U("payBill"),
+        slot = "footer",
+        style = {}
+    }, function()
+        BCCSocietyMenu:Close()
+        FeatherRPC:Call("bcc-society:RespondBill", { billId = bill.id, accept = true })
+    end)
+    billRequestPage:RegisterElement("button", {
+        label = _U("declineBill"),
+        slot = "footer",
+        style = {}
+    }, function()
+        BCCSocietyMenu:Close()
+        FeatherRPC:Call("bcc-society:RespondBill", { billId = bill.id, accept = false })
+    end)
+    billRequestPage:RegisterElement("bottomline", {
+        slot = "footer",
+        style = {}
+    })
+    BCCSocietyMenu:Open({
+        startupPage = billRequestPage
+    })
+end)
+
+-- Paid receipts replace the old receipt item.
+RegisterCommand(Config.receiptsCommandName, function()
+    local receipts = FeatherRPC:CallAsync("bcc-society:GetMyReceipts", {})
+    if type(receipts) ~= "table" or #receipts == 0 then
+        Notify(_U("noReceipts"), "error", 4000)
+        return
+    end
+    local receiptsPage = BCCSocietyMenu:RegisterPage("bcc-society:receiptsPage")
+    receiptsPage:RegisterElement("header", {
+        value = _U("billReceipt"),
+        slot = "header",
+        style = {}
+    })
+    for _, receipt in ipairs(receipts) do
+        receiptsPage:RegisterElement("button", {
+            label = ("%s - $%s (%s)"):format(tostring(receipt.society), tostring(receipt.amount), tostring(receipt.timestamp)),
+            style = {}
+        }, function()
+            OpenReceiptMenu(receipt)
+        end)
+    end
+    receiptsPage:RegisterElement("button", {
+        label = _U("close"),
+        slot = "footer",
+        style = {}
+    }, function()
+        BCCSocietyMenu:Close()
+    end)
+    BCCSocietyMenu:Open({
+        startupPage = receiptsPage
+    })
+end)

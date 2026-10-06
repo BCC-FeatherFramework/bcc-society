@@ -1,42 +1,26 @@
-DBUpdated = false
+-- Society administration: feather-authority staff capability, or a feather-jobs
+-- job listed in Config.AllowedJobs. Fails closed.
+function IsSocietyAdmin(src)
+    if tonumber(src) == 0 then return Config.Admin.allowConsole == true end
+    local allowed = SocietyAuthority.IsAllowed(src)
+    if allowed then return true end
 
-BccUtils.RPC:Register("BCC-Society:AdminCheck", function(_, cb, src)
-    local user = Core.getUser(src)
-    if not user then
-        devPrint("[ERROR] User not found for source: " .. tostring(src))
-        return cb(false)
+    local character = SocietyCharacters.Get(src)
+    if not character then return false end
+    for _, jobKey in ipairs(Config.AllowedJobs or {}) do
+        local checked = SocietyJobs.Check({ characterId = character.charIdentifier, jobKey = jobKey })
+        if checked.ok and checked.value.matched then return true end
     end
+    return false
+end
 
-    local character = user.getUsedCharacter
-    if not character then
-        devPrint("[ERROR] Character not found for user: " .. tostring(src))
-        return cb(false)
-    end
-
-    devPrint("[AdminCheck] Checking admin for charId " .. tostring(character.charIdentifier) ..
-             " (Group: " .. tostring(character.group) .. ")")
-
-    -- ✅ Check group
-    for _, group in ipairs(Config.adminGroups or {}) do
-        if character.group == group then
-            devPrint("[AdminCheck] Matched admin group: " .. tostring(group))
-            return cb(true)
-        end
-    end
-
-        -- Check job
-    for _, job in ipairs(Config.AllowedJobs or {}) do
-        if character.job == job then
-            return cb(true)
-        end
-    end
-
-    devPrint("[AdminCheck] No matching admin group found.")
-    devPrint("[AdminCheck] Access denied for src " .. tostring(src))
-    return cb(false)
+FeatherRPC:Register("BCC-Society:AdminCheck", function(_, cb, src)
+    local allowed = IsSocietyAdmin(src)
+    devPrint("[AdminCheck] src " .. tostring(src) .. " allowed=" .. tostring(allowed))
+    return cb(allowed)
 end)
 
-BccUtils.RPC:Register("BCC-Society:GetPlayers", function(params, cb, recSource)
+FeatherRPC:Register("BCC-Society:GetPlayers", function(params, cb, recSource)
     devPrint("[GetPlayers] RPC invoked by src", tostring(recSource))
 
     local data    = {}
@@ -56,34 +40,23 @@ BccUtils.RPC:Register("BCC-Society:GetPlayers", function(params, cb, recSource)
         local pidStr = tostring(playerId)
         devPrint("[GetPlayers] Inspecting playerId:", pidStr)
 
-        local User = Core.getUser(playerId)
-        if not User then
-            devPrint("[GetPlayers] Core.getUser returned nil for", pidStr)
+        local Character = SocietyCharacters.Get(playerId)
+        if not Character then
+            devPrint("[GetPlayers] no active character for", pidStr)
         else
-            local Character = User.getUsedCharacter
-            if not Character then
-                devPrint("[GetPlayers] getUsedCharacter is nil for", pidStr)
-            else
-                local firstname = Character.firstname or "Unknown"
-                local lastname  = Character.lastname or "Player"
-                if (Character.firstname == nil) or (Character.lastname == nil) then
-                    devPrint("[GetPlayers] Missing name parts for", pidStr, "-> using:", firstname, lastname)
-                end
+            local playerName = Character.firstname .. " " .. Character.lastname
+            local staticid   = Character.charIdentifier
 
-                local playerName = firstname .. " " .. lastname
-                local staticid   = Character.charIdentifier
+            devPrint("[GetPlayers] Adding player to list:", pidStr,
+                     "name:", playerName,
+                     "charId:", tostring(staticid))
 
-                devPrint("[GetPlayers] Adding player to list:", pidStr,
-                         "name:", playerName,
-                         "charId:", tostring(staticid))
-
-                data[pidStr] = {
-                    serverId   = playerId,
-                    PlayerName = playerName,
-                    staticid   = staticid,
-                }
-                added = added + 1
-            end
+            data[pidStr] = {
+                serverId   = playerId,
+                PlayerName = playerName,
+                staticid   = staticid,
+            }
+            added = added + 1
         end
     end
 
@@ -91,4 +64,3 @@ BccUtils.RPC:Register("BCC-Society:GetPlayers", function(params, cb, recSource)
     cb(data)
 end)
 
-BccUtils.Versioner.checkFile(GetCurrentResourceName(), 'https://github.com/BryceCanyonCounty/bcc-society')
