@@ -1,28 +1,25 @@
 Config = {
     devMode = true,                             -- Enable/Disable Dev Mode (False on live)
-    defaultlang = "en_lang",                    -- Choose the language file to use
-    Notify = "feather-menu",                    ----or use vorp-core
-    NotifyOptions = {
-        type = "info",                          -- default type
-        transition = "slide",                  -- bounce, flip, slide, zoom
-        position = "top-center",                -- top-left, top-center, top-right, bottom-left, bottom-center, bottom-right
-        autoClose = 5000,                       -- default duration in ms
-        hideProgressBar = false,                -- show progress bar
-    },
+    defaultlang = "en_us",                      -- Language used by the server (en_us, pl, ro)
+    NotifyStyle = "right",                      -- feather-notify style used for player messages
     createSocietyCommandName = "createSociety", -- Command to create a society
-    useWebhooks = true,
-    WebhookTitle = 'BCC-Society',
-    WebhookAvatar = '',
-    adminLogsWebhook = "", -- Webhook for admin logs
-    -- TO BE ABLE TO RUN CREATE SOCIEITY YOUR USER GROUP MUST BE ADMIN IN VORP
+
+    -- Society administration is a feather-authority capability (staff only).
+    -- Feather Admin owners/administrators are accepted through their staff role.
+    Admin = {
+        allowConsole = true,
+        capability = 'staff.society.manage',
+        role = 'staff.society.admin',
+        staffRoles = { 'staff.admin.owner', 'staff.admin.administrator' }
+    },
+    -- Characters holding one of these feather-jobs jobs may also administer societies.
+    AllowedJobs = { 'societymanager' },
 
     employeeWorksAtMultiple = true,                     -- Allow employees to work at multiple societies (Can only own one regardless of this setting)
     openJobManagementMenuCommandName = "jobManagement", -- Command to open the job management menu (This is how you switch between jobs (NOTE this only applies if you enable employeeWorksAtMultiple))
     switchJobCommandName = "switchjob",                 -- Command to switch directly to a specific job
-    switchJobCooldownSeconds = 30,                       -- Cooldown for the switch job command in seconds (set to 0 to disable)
+    switchJobCooldownSeconds = 30,                      -- Cooldown for the switch job command in seconds (set to 0 to disable)
 
-    adminGroups = { "admin", "superadmin" },  -- groups allowed
-    AllowedJobs = { 'writer', 'societymanager' },
     toggleOnDutyCommandName = "onDuty",       -- Command to toggle duty
     toggleOffDutyCommandName = "offDuty",     -- Command to toggle duty
     allowBlips = true,                        -- Allow blips to be shown for societies
@@ -34,7 +31,66 @@ Config = {
     openMenuRadius = 2,                       -- Radius to open the society management menu (Can not be larger than 49)
     billCommandName = "bill",                 -- Command to open the bill menu
     adminMenuCommandName = "manageSocieties", -- Command to open the admin menu
-    bill_receiptitem = "bcc_society_receipt",
+    receiptsCommandName = "receipts",         -- Command to view your paid receipts
+
+    -- Job types registered in feather-jobs and owned by bcc-society.
+    -- Every society picks one job type; every rank maps to one of its grades.
+    -- Societies of the same type share the job (e.g. every gun store is
+    -- `gunsmith`) and are told apart by the employer, so doors, crafting and
+    -- housing can check "gunsmith, grade >= 10" without knowing which store.
+    -- Grade keys and ordinals are stable identifiers: add new ones, don't rename.
+    Jobs = {
+        general_store = {
+            label = "General Store",
+            ownerGrade = "owner",
+            grades = {
+                { key = "clerk", label = "Clerk", ordinal = 0 },
+                { key = "manager", label = "Manager", ordinal = 10 },
+                { key = "owner", label = "Owner", ordinal = 100 }
+            }
+        },
+        gunsmith = {
+            label = "Gunsmith",
+            ownerGrade = "owner",
+            grades = {
+                { key = "apprentice", label = "Apprentice", ordinal = 0 },
+                { key = "smith", label = "Gunsmith", ordinal = 10 },
+                { key = "owner", label = "Owner", ordinal = 100 }
+            }
+        },
+        blacksmith = {
+            label = "Blacksmith",
+            ownerGrade = "owner",
+            grades = {
+                { key = "apprentice", label = "Apprentice", ordinal = 0 },
+                { key = "smith", label = "Smith", ordinal = 10 },
+                { key = "master", label = "Master Smith", ordinal = 20 },
+                { key = "owner", label = "Owner", ordinal = 100 }
+            }
+        },
+        saloon = {
+            label = "Saloon",
+            ownerGrade = "owner",
+            grades = {
+                { key = "barkeep", label = "Barkeep", ordinal = 0 },
+                { key = "manager", label = "Manager", ordinal = 10 },
+                { key = "owner", label = "Owner", ordinal = 100 }
+            }
+        },
+        doctor = {
+            label = "Doctor",
+            ownerGrade = "owner",
+            grades = {
+                { key = "nurse", label = "Nurse", ordinal = 0 },
+                { key = "doctor", label = "Doctor", ordinal = 10 },
+                { key = "owner", label = "Head Doctor", ordinal = 100 }
+            }
+        }
+    },
+
+    -- How often the server checks pending hire/promote/fire workflows (ms).
+    WorkflowPollMs = 5000,
+
     blips = {                                 --Blips you can choose when making societies (You can add as many as you want just follow the layout)
         {
             blipName = "Gun Store",

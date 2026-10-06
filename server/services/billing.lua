@@ -1,231 +1,134 @@
-BccUtils.RPC:Register("bcc-society:BillPlayer", function(params, cb, src)
-    local _source = src
-    local playerServerId = params.playerServerId
-    local amount = params.amount
-    local description = params.description
+-- Billing (D6: the customer accepts first). The biller's rank must allow
+-- billing; the bill is stored as PENDING and offered to the customer, and only
+-- an accepted bill moves money: customer wallet -> society treasury
+-- (society.bill), with the customer as the acting character.
 
-    devPrint("Billing started by source: " .. tostring(_source) .. " for target: " .. tostring(playerServerId) .. " amount: " .. tostring(amount))
+local BILL_TTL_SECONDS = 120
 
-    -- Get source character
-    local billerUser = Core.getUser(_source)
-    if not billerUser then
-        devPrint("No user session for source: " .. tostring(_source))
-        return
-    end
-    local biller = billerUser.getUsedCharacter
-    if not biller then
-        devPrint("No character loaded for source: " .. tostring(_source))
-        return
+FeatherRPC:Register("bcc-society:BillPlayer", function(params, cb, src)
+    local allowed, biller, society = HasSocietyPermission(src, params.societyId, "rank_can_bill_players")
+    if not allowed then
+        return cb(false, _U("noBillPerms"))
     end
 
-    -- Get target character
-    local billedUser = Core.getUser(playerServerId)
-    if not billedUser then
-        devPrint("No user session for billed: " .. tostring(playerServerId))
-        return
-    end
-    local billed = billedUser.getUsedCharacter
+    local billed = SocietyCharacters.Get(params.playerServerId)
     if not billed then
-        devPrint("No character loaded for billed: " .. tostring(playerServerId))
-        return
+        return cb(false, _U("playerNotOnline"))
+    end
+    if billed.charIdentifier == biller.charIdentifier then
+        return cb(false, _U("cannotBillSelf"))
     end
 
-    local cost = tonumber(amount)
-    if not cost or cost <= 0 then
-        devPrint("Invalid cost entered: " .. tostring(amount))
-
-        NotifyClient(_source, _U("invalidAmount"), "error", 4000)
-        return
+    local cost = ParseAmount(params.amount)
+    if not cost then
+        devPrint("Invalid cost entered: " .. tostring(params.amount))
+        return cb(false, _U("invalidAmount"))
     end
 
-    if billed.money < cost then
-        devPrint("Insufficient funds. Has: " .. billed.money .. ", needs: " .. cost)
-        NotifyClient(_source, _U("targetNoMoney"), "error", 4000)
-        return
-    end
-
-    -- Deduct and handle transfer
-    devPrint("Deducting $" .. cost .. " from billed.")
-    billed.removeCurrency(0, cost)
-
-    local society = params.societyId and SocietyAPI:GetSociety(params.societyId)
-    if society then
-        devPrint("Found society: " .. tostring(society.id) .. " - Adding to ledger.")
-        society:AddMoneyToLedger(cost)
-    else
-        devPrint("No society found. Adding to biller’s wallet.")
-        biller.addCurrency(0, cost)
-    end
-
-    -- Create DB record
-    local timestamp = os.time()
-    devPrint("Inserting DB bill at timestamp: " .. tostring(timestamp))
-
-    local insertId = MySQL.insert.await(
+    local description = type(params.description) == "string" and params.description:sub(1, 500) or ""
+    local info = society:GetSocietyInfo()
+    local billId = DB.insert(
         'INSERT INTO bcc_society_bills (billed_identifier, biller_identifier, billed_name, biller_name, amount, society_id, description, timestamp, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        {
-            billed.identifier,
-            biller.identifier,
-            billed.firstname .. " " .. billed.lastname,
-            biller.firstname .. " " .. biller.lastname,
-            cost,
-            society and society.id,
-            description,
-            timestamp,
-            "PAID"
-        })
-    devPrint("Giving receipt to billed player: " .. billed.identifier)
-
-    -- Add the item with metadata right away
-    exports.vorp_inventory:addItem(playerServerId, Config.bill_receiptitem, 1, {
-        description = "Receipt from billing",
-        receipt_id = insertId
-    })
-    
-    devPrint("Added ".. Config.bill_receiptitem.. " with metadata receipt_id: " .. tostring(insertId))
-
-
-    -- Notify
-    devPrint("Sending UI notifications.")
-    NotifyClient(playerServerId, _U("youHaveBeenBilled") .. cost .. _U("checkInvnt"), 5000)
-    NotifyClient(_source, _U("billSuccess"), 4000)
-
-    -- Discord log
-    devPrint("Sending to Discord log.")
-    BccUtils.Discord.sendMessage(
-        Config.adminLogsWebhook,
-        Config.WebhookTitle,
-        Config.WebhookAvatar,
-        _U("playerBilled"),
-        _U("playerBilled") .. cost
+        billed.charIdentifier, biller.charIdentifier,
+        billed.firstname .. " " .. billed.lastname, biller.firstname .. " " .. biller.lastname,
+        cost, info.business_id, description, os.time(), "PENDING"
     )
+
+    FeatherRPC:Notify("bcc-society:BillRequest", {
+        id = billId,
+        amount = cost,
+        society = info.business_name,
+        biller = biller.firstname .. " " .. biller.lastname,
+        description = description
+    }, billed.source)
+    devPrint("[BillPlayer] bill", billId, "sent to", billed.charIdentifier)
+    return cb(true)
 end)
 
-local function GetReceiptById(receiptId)
-    if not receiptId then
-        devPrint("[GetReceiptById] No receipt ID provided.")
-        return nil
+-- The customer's answer. Only the billed character can answer, once.
+FeatherRPC:Register("bcc-society:RespondBill", function(params, cb, src)
+    local customer = SocietyCharacters.Get(src)
+    if not customer then return cb(false) end
+    local bill = DB.one("SELECT * FROM bcc_society_bills WHERE id = ? AND billed_identifier = ? AND status = 'PENDING'",
+        tonumber(params.billId), customer.charIdentifier)
+    if not bill then
+        NotifyClient(src, _U("receiptNotFound"), "error", 4000)
+        return cb(false)
+    end
+    local billerSource = SocietyCharacters.FindSource(bill.biller_identifier)
+
+    if params.accept ~= true or os.time() - tonumber(bill.timestamp) > BILL_TTL_SECONDS then
+        local status = params.accept == true and "EXPIRED" or "DECLINED"
+        DB.exec("UPDATE bcc_society_bills SET status = ? WHERE id = ? AND status = 'PENDING'", status, bill.id)
+        if billerSource then NotifyClient(billerSource, _U("billDeclined"), "error", 4000) end
+        if status == "EXPIRED" then NotifyClient(src, _U("billExpired"), "error", 4000) end
+        return cb(false)
     end
 
-    local result = MySQL.query.await([[
-        SELECT b.*, s.business_name
-        FROM bcc_society_bills b
-        LEFT JOIN bcc_society s ON b.society_id = s.business_id
-        WHERE b.id = ?
-    ]], { tonumber(receiptId) })
+    -- Claim the bill before paying so it can't be paid twice.
+    if tonumber(DB.exec("UPDATE bcc_society_bills SET status = 'PAYING' WHERE id = ? AND status = 'PENDING'", bill.id)) ~= 1 then
+        return cb(false)
+    end
 
-    if result and #result > 0 then
-        local bill = result[1]
-        devPrint("[GetReceiptById] Found receipt: " .. json.encode(bill))
-        return {
+    local society = DB.one("SELECT * FROM bcc_society WHERE business_id = ? AND status = 'active'", bill.society_id)
+    local treasury = society and SocietyEconomy.EnsureTreasury(society)
+    local wallet = SocietyEconomy.GetWallet(customer.charIdentifier)
+    local paid = (treasury and treasury.ok and wallet.ok) and SocietyEconomy.Transfer(wallet.value, treasury.value,
+        tonumber(bill.amount), 'society.bill', { type = 'bcc_society_bill', id = bill.id },
+        ('society:bill:%s'):format(bill.id), customer) or Society.Err('economy_unavailable', 'Society money is unavailable.')
+
+    if not paid.ok then
+        DB.exec("UPDATE bcc_society_bills SET status = 'FAILED' WHERE id = ?", bill.id)
+        NotifyClient(src, SocietyEconomy.Message(paid, "notEnoughCash"), "error", 4000)
+        if billerSource then NotifyClient(billerSource, _U("targetNoMoney"), "error", 4000) end
+        return cb(false)
+    end
+
+    DB.exec("UPDATE bcc_society_bills SET status = 'PAID', transaction_id = ? WHERE id = ?", paid.value.transactionId, bill.id)
+    NotifyClient(src, _U("youHaveBeenBilled") .. bill.amount, "success", 5000)
+    if billerSource then NotifyClient(billerSource, _U("billSuccess"), "success", 4000) end
+
+    FeatherRPC:Notify("bcc-society:OpenReceiptMenu", {
+        id = bill.id,
+        amount = bill.amount,
+        paidFrom = bill.billed_name,
+        paidTo = bill.biller_name,
+        society = society.business_name,
+        timestamp = os.date("%Y-%m-%d %H:%M:%S", tonumber(bill.timestamp)),
+        description = bill.description,
+        status = "PAID"
+    }, src)
+    return cb(true)
+end)
+
+-- A customer may delete their own paid receipt record.
+FeatherRPC:Register("bcc-society:RevokeReceipt", function(params, cb, src)
+    local character = SocietyCharacters.Get(src)
+    if not character or not params.receiptId then return cb(false) end
+    local deleted = DB.exec("DELETE FROM bcc_society_bills WHERE id = ? AND billed_identifier = ? AND status = 'PAID'",
+        tonumber(params.receiptId), character.charIdentifier)
+    return cb(tonumber(deleted) == 1)
+end)
+
+-- Lists the caller's own paid receipts (newest first).
+FeatherRPC:Register("bcc-society:GetMyReceipts", function(_, cb, src)
+    local character = SocietyCharacters.Get(src)
+    if not character then return cb(false) end
+    local rows = DB.query([[SELECT b.*, s.business_name FROM bcc_society_bills b
+        LEFT JOIN bcc_society s ON s.business_id = b.society_id
+        WHERE b.billed_identifier = ? AND b.status = 'PAID' ORDER BY b.id DESC LIMIT 25]], character.charIdentifier) or {}
+    local receipts = {}
+    for _, bill in ipairs(rows) do
+        receipts[#receipts + 1] = {
             id = bill.id,
             amount = bill.amount,
-            paidFrom = bill.biller_name,
-            paidTo = bill.billed_name,
-            society = bill.business_name,
-            timestamp = os.date("%Y-%m-%d %H:%M:%S", bill.timestamp),
+            paidFrom = bill.billed_name,
+            paidTo = bill.biller_name,
+            society = bill.business_name or "-",
+            timestamp = os.date("%Y-%m-%d %H:%M:%S", tonumber(bill.timestamp)),
             description = bill.description,
             status = bill.status
         }
-    else
-        devPrint("[GetReceiptById] No receipt found for ID: " .. tostring(receiptId))
-        return nil
     end
-end
-
-BccUtils.RPC:Register("bcc-society:OpenReceiptMenu", function(receiptId, src)
-    if not receiptId then return end
-
-    local result = MySQL.query.await("SELECT * FROM bcc_society_bills WHERE id = ?", { receiptId })
-    if result and result[1] then
-        OpenReceiptMenu(result[1])
-    else
-        NotifyClient(src, _U("receiptNotFound"), "error", 4000)
-    end
+    return cb(receipts)
 end)
-
-BccUtils.RPC:Register("bcc-society:RevokeReceipt", function(params, cb, src)
-    local receiptId = params and params.receiptId
-    devPrint("[RevokeReceipt] Requested by src: " .. tostring(src) .. ", receiptId: " .. tostring(receiptId))
-
-    if not receiptId then
-        devPrint("[RevokeReceipt] Missing receiptId.")
-        return cb(false)
-    end
-
-    local user = Core.getUser(src)
-    if not user then 
-        devPrint("[RevokeReceipt] User not found for source: " .. tostring(src))
-        return cb(false)
-    end
-
-    local character = user.getUsedCharacter
-    if not character then 
-        devPrint("[RevokeReceipt] Character not found for source: " .. tostring(src))
-        return cb(false)
-    end
-
-    local identifier = character.identifier
-    devPrint("[RevokeReceipt] Character identifier: " .. tostring(identifier))
-
-    MySQL.query('SELECT * FROM bcc_society_bills WHERE id = ? AND billed_identifier = ?', {receiptId, identifier}, function(result)
-        if result and result[1] then
-            local bill = result[1]
-            devPrint("[RevokeReceipt] Receipt found with status: " .. tostring(bill.status))
-
-            if bill.status == "PAID" then
-                exports['feather-mysql']:query('DELETE FROM bcc_society_bills WHERE id = ?', {receiptId}, function()
-                    devPrint("[RevokeReceipt] Receipt deleted from DB. Removing item...")
-                    exports.vorp_inventory:subItem(src, Config.bill_receiptitem, 1)
-                    cb(true)
-                end)
-            else
-                devPrint("[RevokeReceipt] Receipt exists but is not marked as PAID.")
-                cb(false)
-            end
-        else
-            devPrint("[RevokeReceipt] Receipt not found or doesn't belong to this character.")
-            cb(false)
-        end
-    end)
-end)
-
-local function HandleReceiptItemUse(data)
-    local src = data.source
-    exports.vorp_inventory:closeInventory(src)
-
-    if not data.item or type(data.item.metadata) ~= "table" then
-        NotifyClient(src, _U("invalidReceiptItem"), "error", 4000)
-
-        -- Delete the item if metadata is missing or invalid
-        if data.item and data.item.id then
-            devPrint("[HandleReceiptItemUse] Removing invalid item ID: " .. tostring(data.item.id))
-            exports.vorp_inventory:subItemID(src, data.item.id)
-        end
-        return
-    end
-
-    local metadata = data.item.metadata
-    local receiptId = metadata.receipt_id
-
-    if not receiptId then
-        NotifyClient(src, _U("receiptNotFoundAndDeleted"), "error", 4000)
-        Wait(2000)
-        -- Delete the item if it doesn't contain a valid receipt_id
-        if data.item and data.item.id then
-            devPrint("[HandleReceiptItemUse] Removing item with no receipt_id. ID: " .. tostring(data.item.id))
-            exports.vorp_inventory:subItemID(src, data.item.id)
-        end
-        return
-    end
-
-    local receipt = GetReceiptById(receiptId)
-    if receipt then
-        receipt._target = src
-        BccUtils.RPC:Notify("bcc-society:OpenReceiptMenu", receipt, src)
-    else
-        NotifyClient(src, _U("receiptNotFound"), "error", 4000)
-    end
-end
-
-exports.vorp_inventory:registerUsableItem(Config.bill_receiptitem, HandleReceiptItemUse, GetCurrentResourceName())

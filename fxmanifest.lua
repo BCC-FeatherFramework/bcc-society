@@ -1,4 +1,4 @@
-fx_version "adamant"
+fx_version "cerulean"
 games { "rdr3" }
 rdr3_warning "I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships."
 lua54 "yes"
@@ -10,8 +10,10 @@ shared_scripts {
     'languages/*.lua'
 }
 
+-- Each file is listed once: a file named here and also matched by a glob loads twice.
 client_scripts {
-    'client/helpers/functions.lua',
+    'client/feather/init.lua',
+    'client/feather/menu_v2.lua',
     'client/helpers/*.lua',
     'client/services/menus/*.lua',
     'client/services/*.lua',
@@ -19,10 +21,12 @@ client_scripts {
 }
 
 server_scripts {
-    '@feather-mysql/lib/MySQL.lua',
-    'server/helpers/functions.lua',
-    'server/services/API.lua',
-    'server/services/dbupdater.lua',
+    '@feather-mysql/lib/DB.lua',
+    'server/feather/init.lua',
+    'server/feather/authority.lua',
+    'server/feather/economy.lua',
+    'server/feather/jobs.lua',
+    'server/feather/organizations.lua',
     'server/helpers/*.lua',
     'server/services/*.lua',
     'server/main.lua'
@@ -30,11 +34,16 @@ server_scripts {
 
 dependencies {
     'feather-mysql',
-    'vorp_core',
-    'feather-menu',
-    'bcc-utils',
-    'vorp_character',
-    'vorp_inventory',
+    'feather-core',
+    'feather-character',
+    'feather-notify',
+    'feather-toolkit',
+    'feather-menu-v2',
+    'feather-jobs',
+    'feather-economy',
+    'feather-inventory',
+    'feather-organizations',
+    'feather-authority'
 }
 
-version '1.4.1'
+version '2.0.0'
