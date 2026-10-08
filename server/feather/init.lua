@@ -1,7 +1,7 @@
 -- bcc-society's boundary to the Feather Framework (server side).
 --
 -- Keeps the call shapes the existing services were written against
--- (devPrint, NotifyClient, an RPC object, character objects with
+-- (DBG, NotifyClient, an RPC object, character objects with
 -- charIdentifier/firstname/lastname) while every value now comes from
 -- feather-core sessions and the Character provider. Character IDs are UUIDs.
 
@@ -12,24 +12,35 @@ function Society.Err(code, message, details)
     return { ok = false, code = code, message = message, details = details }
 end
 
-if Config.devMode then
-    function devPrint(...)
-        local args = { ... }
-        for i = 1, select('#', ...) do
-            if type(args[i]) == "table" then
-                args[i] = json.encode(args[i])
+-- Debug output in dev mode: DBG:Info / DBG:Success / DBG:Warning / DBG:Error(...)
+-- (DBG.Info(...) works too). Tables are JSON-encoded. Every line gets a colored
+-- label and ends with ^0, so a color never carries over to the next line.
+local function debugPrinter(color, label)
+    return function(first, ...)
+        if not Config.devMode then return end
+        local values = first == DBG and table.pack(...) or table.pack(first, ...)
+        local parts = {}
+        for i = 1, values.n do
+            local value = values[i]
+            if type(value) == "table" then
+                local ok, encoded = pcall(json.encode, value)
+                parts[i] = ok and encoded or tostring(value)
             else
-                args[i] = tostring(args[i])
+                parts[i] = tostring(value)
             end
         end
-        -- One print per line, each ending with ^0 so the color never carries over.
-        for line in (table.concat(args, " ") .. "\n"):gmatch("(.-)\n") do
-            print("^1[DEV MODE] ^4" .. line .. "^0")
+        for line in (table.concat(parts, " ") .. "\n"):gmatch("(.-)\n") do
+            print(("^%d[bcc-society %s]^0 %s^0"):format(color, label, line))
         end
     end
-else
-    function devPrint(...) end
 end
+
+DBG = {
+    Info = debugPrinter(4, "info"),
+    Success = debugPrinter(2, "ok"),
+    Warning = debugPrinter(3, "warn"),
+    Error = debugPrinter(1, "error")
+}
 
 -- RPC ------------------------------------------------------------------------
 -- Same handler shape as before: function(params, cb, source).
@@ -64,7 +75,7 @@ function NotifyClient(src, message, notifyType, duration)
         duration = tonumber(duration) or 4000
     })
     if type(result) ~= 'table' or result.ok ~= true then
-        devPrint('[NotifyClient] failed', type(result) == 'table' and result.code or 'invalid_result')
+        DBG:Error('[NotifyClient] failed', type(result) == 'table' and result.code or 'invalid_result')
     end
 end
 

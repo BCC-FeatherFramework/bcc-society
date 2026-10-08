@@ -30,7 +30,7 @@ RegisterServerEvent("bcc-society:RankManagement", function(type, businessId, ran
         end
     end
 
-    devPrint(("[RankManagement] %s rank '%s' society %s by %s"):format(tostring(type), rankName, tostring(businessId), char.charIdentifier))
+    DBG:Info(("[RankManagement] %s rank '%s' society %s by %s"):format(tostring(type), rankName, tostring(businessId), char.charIdentifier))
 
     if type == "add" then
         if society:GetRankInfo(rankName) then

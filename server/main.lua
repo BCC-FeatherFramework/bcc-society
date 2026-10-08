@@ -16,20 +16,20 @@ end
 
 FeatherRPC:Register("BCC-Society:AdminCheck", function(_, cb, src)
     local allowed = IsSocietyAdmin(src)
-    devPrint("[AdminCheck] src " .. tostring(src) .. " allowed=" .. tostring(allowed))
+    DBG:Info("[AdminCheck] src " .. tostring(src) .. " allowed=" .. tostring(allowed))
     return cb(allowed)
 end)
 
 FeatherRPC:Register("BCC-Society:GetPlayers", function(params, cb, recSource)
-    devPrint("[GetPlayers] RPC invoked by src", tostring(recSource))
+    DBG:Info("[GetPlayers] RPC invoked by src", tostring(recSource))
 
     local data    = {}
     local players = GetPlayers()
 
-    devPrint("[GetPlayers] Players table length:", players and tostring(#players) or "nil")
+    DBG:Info("[GetPlayers] Players table length:", players and tostring(#players) or "nil")
 
     if not players or #players == 0 then
-        devPrint("[GetPlayers] No players found on server.")
+        DBG:Info("[GetPlayers] No players found on server.")
         cb(data)
         return
     end
@@ -38,16 +38,16 @@ FeatherRPC:Register("BCC-Society:GetPlayers", function(params, cb, recSource)
 
     for _, playerId in ipairs(players) do
         local pidStr = tostring(playerId)
-        devPrint("[GetPlayers] Inspecting playerId:", pidStr)
+        DBG:Info("[GetPlayers] Inspecting playerId:", pidStr)
 
         local Character = SocietyCharacters.Get(playerId)
         if not Character then
-            devPrint("[GetPlayers] no active character for", pidStr)
+            DBG:Info("[GetPlayers] no active character for", pidStr)
         else
             local playerName = Character.firstname .. " " .. Character.lastname
             local staticid   = Character.charIdentifier
 
-            devPrint("[GetPlayers] Adding player to list:", pidStr,
+            DBG:Info("[GetPlayers] Adding player to list:", pidStr,
                      "name:", playerName,
                      "charId:", tostring(staticid))
 
@@ -60,7 +60,7 @@ FeatherRPC:Register("BCC-Society:GetPlayers", function(params, cb, recSource)
         end
     end
 
-    devPrint("[GetPlayers] Completed. Added", tostring(added), "of", tostring(#players), "players.")
+    DBG:Success("[GetPlayers] Completed. Added", tostring(added), "of", tostring(#players), "players.")
     cb(data)
 end)
 

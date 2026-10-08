@@ -94,10 +94,10 @@ local function resolveSocietyRank(society, rankInput, character)
 
     local name, info, reason = evaluate(society:GetRankInfo(trimmed))
     if name then
-        devPrint(string.format("[resolveSocietyRank] Matched exact rank '%s' for society %s", name, tostring(society.id)))
+        DBG:Info(string.format("[resolveSocietyRank] Matched exact rank '%s' for society %s", name, tostring(society.id)))
         return name, info, reason
     elseif reason == "noPermission" then
-        devPrint(string.format("[resolveSocietyRank] Rank '%s' found but lacks switch permission", trimmed))
+        DBG:Info(string.format("[resolveSocietyRank] Rank '%s' found but lacks switch permission", trimmed))
         return nil, nil, reason
     end
 
@@ -113,7 +113,7 @@ local function resolveSocietyRank(society, rankInput, character)
         end
     end
 
-    devPrint(string.format("[resolveSocietyRank] Could not resolve '%s' for society %s", trimmed, tostring(society.id)))
+    DBG:Warning(string.format("[resolveSocietyRank] Could not resolve '%s' for society %s", trimmed, tostring(society.id)))
     return nil, nil, "notFound"
 end
 
@@ -138,7 +138,7 @@ local function setActiveSocietyJob(src, character, society)
     local assignmentId = membershipAssignment(society, character)
     if not assignmentId then
         NotifyClient(src, _U("noRankSetCanNotSwitchJob"), "error", 4000)
-        devPrint(string.format("[setActiveSocietyJob] No assignment for char %s in society %s", tostring(character.charIdentifier), tostring(society.id)))
+        DBG:Info(string.format("[setActiveSocietyJob] No assignment for char %s in society %s", tostring(character.charIdentifier), tostring(society.id)))
         return false
     end
 
@@ -146,16 +146,16 @@ local function setActiveSocietyJob(src, character, society)
     local activated = SocietyJobs.SetActive(character.charIdentifier, assignmentId, src)
     if not activated.ok then
         NotifyClient(src, _U("jobServiceUnavailable"), "error", 4000)
-        devPrint("[setActiveSocietyJob] SetActive failed", activated.code)
+        DBG:Error("[setActiveSocietyJob] SetActive failed", activated.code)
         return false
     end
     local duty = SocietyJobs.SetDuty(assignmentId, 'on_duty', src)
     if not duty.ok then
         NotifyClient(src, _U("jobServiceUnavailable"), "error", 4000)
-        devPrint("[setActiveSocietyJob] SetDuty failed", duty.code)
+        DBG:Error("[setActiveSocietyJob] SetDuty failed", duty.code)
         return false
     end
-    devPrint(string.format("[setActiveSocietyJob] Char %s now active in society %s (assignment %s)", tostring(character.charIdentifier), tostring(society.id), assignmentId))
+    DBG:Info(string.format("[setActiveSocietyJob] Char %s now active in society %s (assignment %s)", tostring(character.charIdentifier), tostring(society.id), assignmentId))
     return true
 end
 
@@ -182,7 +182,7 @@ RegisterServerEvent("bcc-society:UpdateJob", function(jobName, societyId, desire
     local character = SocietyCharacters.Get(src)
     if not character then return end
 
-    devPrint(string.format("[UpdateJob] char %s requested job '%s' society %s desiredRank '%s'", tostring(character.charIdentifier), tostring(jobName), tostring(societyId), tostring(desiredRank)))
+    DBG:Info(string.format("[UpdateJob] char %s requested job '%s' society %s desiredRank '%s'", tostring(character.charIdentifier), tostring(jobName), tostring(societyId), tostring(desiredRank)))
 
     if (not societyId or societyId == 0) and (not jobName or jobName == "" or jobName == "none") then
         NotifyClient(src, _U("switchJobNotFound"), "error", 4000)
@@ -284,7 +284,7 @@ RegisterServerEvent("bcc-society:SwitchJobCommand", function(rawIdentifier)
     local character = SocietyCharacters.Get(src)
     if not character then return end
 
-    devPrint(string.format("[SwitchJobCommand] char %s input '%s'", tostring(character.charIdentifier), tostring(rawIdentifier)))
+    DBG:Info(string.format("[SwitchJobCommand] char %s input '%s'", tostring(character.charIdentifier), tostring(rawIdentifier)))
 
     if type(rawIdentifier) ~= "string" then
         NotifyClient(src, _U("switchJobUsage"), "error", 4000)
@@ -392,5 +392,5 @@ CreateThread(function()
     for _, member in ipairs(members) do
         SocietyJobs.OffDutyAll(member.character_id)
     end
-    devPrint('[jobs] start-up duty reset for ' .. #members .. ' member(s)')
+    DBG:Info('[jobs] start-up duty reset for ' .. #members .. ' member(s)')
 end)

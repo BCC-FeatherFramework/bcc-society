@@ -40,19 +40,35 @@ BCCSocietyMenu = FeatherMenu:RegisterMenu('BCC-Society:Menu', {
     end
 })
 
--- Helper function for debugging in DevMode
-if Config.devMode then
-    function devPrint(...)
-        local args = { ... }
-        for i = 1, select('#', ...) do args[i] = tostring(args[i]) end
-        -- One print per line, each ending with ^0 so the color never carries over.
-        for line in (table.concat(args, " ") .. "\n"):gmatch("(.-)\n") do
-            print("^1[DEV MODE] ^4" .. line .. "^0")
+-- Debug output in dev mode: DBG:Info / DBG:Success / DBG:Warning / DBG:Error(...)
+-- (DBG.Info(...) works too). Tables are JSON-encoded. Every line gets a colored
+-- label and ends with ^0, so a color never carries over to the next line.
+local function debugPrinter(color, label)
+    return function(first, ...)
+        if not Config.devMode then return end
+        local values = first == DBG and table.pack(...) or table.pack(first, ...)
+        local parts = {}
+        for i = 1, values.n do
+            local value = values[i]
+            if type(value) == "table" then
+                local ok, encoded = pcall(json.encode, value)
+                parts[i] = ok and encoded or tostring(value)
+            else
+                parts[i] = tostring(value)
+            end
+        end
+        for line in (table.concat(parts, " ") .. "\n"):gmatch("(.-)\n") do
+            print(("^%d[bcc-society %s]^0 %s^0"):format(color, label, line))
         end
     end
-else
-    function devPrint(...) end
 end
+
+DBG = {
+    Info = debugPrinter(4, "info"),
+    Success = debugPrinter(2, "ok"),
+    Warning = debugPrinter(3, "warn"),
+    Error = debugPrinter(1, "error")
+}
 
 -- Notify(message, type, duration) lives in client/feather/init.lua (feather-notify).
 

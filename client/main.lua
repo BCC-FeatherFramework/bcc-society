@@ -13,7 +13,7 @@ local function StartForCharacter()
     generation = generation + 1
     OwnedSocieties = {}
     AdminAllowed = FeatherRPC:CallAsync("BCC-Society:AdminCheck") == true
-    devPrint("[RPC] Admin check result: " .. tostring(AdminAllowed))
+    DBG:Info("[RPC] Admin check result: " .. tostring(AdminAllowed))
     TriggerServerEvent("bcc-society:CheckIfInSociety")
 end
 
@@ -43,28 +43,28 @@ RegisterNetEvent("bcc-society:ReceiveSocietyData", function(result)
     if result then
         for _, v in ipairs(result.societiesOwned) do
             OwnedSocieties[v.business_id] = true
-            devPrint("[ReceiveSocietyData] Registered owner of:" .. v.business_name .. " (ID: " .. v.business_id .. ")")
+            DBG:Info("[ReceiveSocietyData] Registered owner of:" .. v.business_name .. " (ID: " .. v.business_id .. ")")
             TriggerEvent("bcc-society:SocietyStart", true, v)
         end
 
         for _, v in ipairs(result.societiesEmployed) do
-            devPrint("[ReceiveSocietyData] Registered employee at:" .. v.business_name .. " (ID: " .. v.business_id .. ")")
+            DBG:Info("[ReceiveSocietyData] Registered employee at:" .. v.business_name .. " (ID: " .. v.business_id .. ")")
             TriggerEvent("bcc-society:SocietyStart", false, v)
         end
     end
 end)
 
 RegisterNetEvent("bcc-society:SocietyStart", function(isOwner, societyData)
-    devPrint("[SocietyStart] Triggered for society:" .. societyData.business_name .. "| IsOwner:" .. tostring(isOwner))
+    DBG:Info("[SocietyStart] Triggered for society:" .. societyData.business_name .. "| IsOwner:" .. tostring(isOwner))
     local started = generation
 
     if isOwner then OwnedSocieties[societyData.business_id] = true end
     local isOwner = IsSocietyOwner(societyData.business_id)
     RegisterCommand(Config.billCommandName, function()
-        devPrint("[BillingCommand] Executed command:" .. Config.billCommandName)
+        DBG:Info("[BillingCommand] Executed command:" .. Config.billCommandName)
 
         if isOwner then
-            devPrint("[BillingCommand] Confirmed as owner for society:" .. societyData.business_name)
+            DBG:Info("[BillingCommand] Confirmed as owner for society:" .. societyData.business_name)
             OpenBillingMenu(societyData)
             return
         end
@@ -74,16 +74,16 @@ RegisterNetEvent("bcc-society:SocietyStart", function(isOwner, societyData)
             recType = "rankData"
         }, function(billData)
             if billData then
-                devPrint("[BillingCommand] Received employee billData:" .. json.encode(billData))
+                DBG:Info("[BillingCommand] Received employee billData:" .. json.encode(billData))
                 if billData.rank_can_bill_players == "true" then
-                    devPrint("[BillingCommand] Employee rank allows billing.")
+                    DBG:Info("[BillingCommand] Employee rank allows billing.")
                     OpenBillingMenu(societyData)
                 else
-                    devPrint("[BillingCommand] Employee rank does NOT allow billing.")
+                    DBG:Info("[BillingCommand] Employee rank does NOT allow billing.")
                     Notify(_U("noBillPerms"), "error", 4000)
                 end
             else
-                devPrint("[BillingCommand] No employee rank data found.")
+                DBG:Info("[BillingCommand] No employee rank data found.")
                 Notify(_U("noRankData"), "error", 4000)
             end
         end)

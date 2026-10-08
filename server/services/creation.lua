@@ -1,7 +1,7 @@
 RegisterServerEvent("bcc-society:InsertSocietyToDB", function(name, ownerCharId, ownerSource, taxAmount, invLimit, coords, blipHash, stages, societyJob)
     local _source = source
     if not IsSocietyAdmin(_source) then
-        devPrint("[InsertSocietyToDB] denied for source", _source)
+        DBG:Warning("[InsertSocietyToDB] denied for source", _source)
         return NotifyClient(_source, _U("noPermission"), "error", 4000)
     end
 
@@ -68,6 +68,6 @@ RegisterServerEvent("bcc-society:InsertSocietyToDB", function(name, ownerCharId,
     end
 
     NotifyClient(_source, _U("societyCreated"), "success", 4000)
-    devPrint("[InsertSocietyToDB] created society", businessId, "by", _source, "owner", ownerCharId)
+    DBG:Success("[InsertSocietyToDB] created society", businessId, "by", _source, "owner", ownerCharId)
     TriggerClientEvent("bcc-society:SocietyStart", tonumber(ownerSource), true, retval[1])
 end)

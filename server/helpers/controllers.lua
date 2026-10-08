@@ -1,15 +1,15 @@
 RegisterNetEvent("bcc-society:CheckIfInSociety", function()
     local _source = source
-    devPrint("[CheckIfInSociety] Triggered by source:" .. _source)
+    DBG:Info("[CheckIfInSociety] Triggered by source:" .. _source)
 
     local char = SocietyCharacters.Get(_source)
     if not char then
-        devPrint("[CheckIfInSociety] No character loaded for source:" .. _source)
+        DBG:Info("[CheckIfInSociety] No character loaded for source:" .. _source)
         return
     end
 
     local charId = char.charIdentifier
-    devPrint("[CheckIfInSociety] Character ID:" .. tostring(charId))
+    DBG:Info("[CheckIfInSociety] Character ID:" .. tostring(charId))
 
     local result = {
         societiesOwned = {},
@@ -17,7 +17,7 @@ RegisterNetEvent("bcc-society:CheckIfInSociety", function()
     }
 
     local allSocsCharOwns = SocietyAPI.MiscAPI:GetAllSocietiesCharOwns(charId)
-    devPrint("[CheckIfInSociety] Societies owned:" .. json.encode(allSocsCharOwns))
+    DBG:Info("[CheckIfInSociety] Societies owned:" .. json.encode(allSocsCharOwns))
 
     if type(allSocsCharOwns) == "table" and #allSocsCharOwns > 0 then
         for _, v in pairs(allSocsCharOwns) do
@@ -26,7 +26,7 @@ RegisterNetEvent("bcc-society:CheckIfInSociety", function()
     end
 
     local allSocsCharEmployedAt = SocietyAPI.MiscAPI:GetAllSocietiesCharIsEmployedAt(charId)
-    devPrint("[CheckIfInSociety] Societies employed at:" .. json.encode(allSocsCharEmployedAt))
+    DBG:Info("[CheckIfInSociety] Societies employed at:" .. json.encode(allSocsCharEmployedAt))
 
     if type(allSocsCharEmployedAt) == "table" and #allSocsCharEmployedAt > 0 then
         for _, v in pairs(allSocsCharEmployedAt) do
@@ -40,7 +40,7 @@ RegisterNetEvent("bcc-society:CheckIfInSociety", function()
         end
     end
 
-    devPrint("[CheckIfInSociety] Final result being sent to client:" .. json.encode(result))
+    DBG:Info("[CheckIfInSociety] Final result being sent to client:" .. json.encode(result))
     TriggerClientEvent("bcc-society:ReceiveSocietyData", _source, result)
 end)
 
@@ -68,10 +68,10 @@ end
 
 RegisterServerEvent("bcc-society:AdminManageSociety", function(societyId, delete, societyTax, societyName, societyInvLimit, societyBlip, societyJob)
     local _source = source
-    devPrint("[AdminManageSociety] Triggered by:" .. _source .. "Society ID:" .. tostring(societyId))
+    DBG:Info("[AdminManageSociety] Triggered by:" .. _source .. "Society ID:" .. tostring(societyId))
 
     if not IsSocietyAdmin(_source) then
-        devPrint("[AdminManageSociety] denied for source:" .. _source)
+        DBG:Warning("[AdminManageSociety] denied for source:" .. _source)
         return NotifyClient(_source, _U("noPermission"), "error", 4000)
     end
 
@@ -81,10 +81,10 @@ RegisterServerEvent("bcc-society:AdminManageSociety", function(societyId, delete
     end
 
     if delete then
-        devPrint("[AdminManageSociety] Dissolving society:" .. societyId)
+        DBG:Info("[AdminManageSociety] Dissolving society:" .. societyId)
         DissolveSociety(society, _source)
     else
-        devPrint("[AdminManageSociety] Updating society:" .. societyId)
+        DBG:Info("[AdminManageSociety] Updating society:" .. societyId)
         societyName = type(societyName) == "string" and societyName:match("^%s*(.-)%s*$") or society.business_name
         if societyName == "" or #societyName > 100 then societyName = society.business_name end
 
@@ -104,5 +104,5 @@ RegisterServerEvent("bcc-society:AdminManageSociety", function(societyId, delete
         end
     end
 
-    devPrint("[AdminManageSociety] Operation completed for society:" .. societyId)
+    DBG:Success("[AdminManageSociety] Operation completed for society:" .. societyId)
 end)
