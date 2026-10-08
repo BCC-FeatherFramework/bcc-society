@@ -3,6 +3,7 @@ AdminAllowed = nil
 local blips = {}
 local OwnedSocieties = {} -- key = business_id, value = true
 local generation = 0      -- bumps on every character change; society loops stop when it moves
+local removedSocieties = {} -- business_id -> true once dissolved; its prompt loop stops
 local Toolkit = exports['feather-toolkit']
 
 function IsSocietyOwner(businessId)
@@ -118,7 +119,7 @@ RegisterNetEvent("bcc-society:SocietyStart", function(isOwner, societyData)
     end
 
     while true do
-        if isFired or started ~= generation then break end
+        if isFired or started ~= generation or removedSocieties[societyData.business_id] then break end
         local playerCoords = GetEntityCoords(PlayerPedId())
         local dist = #(societyCoordsVector3 - playerCoords)
 
@@ -156,6 +157,19 @@ RegisterNetEvent('bcc-society:ClientSyncBlips', function(blipName, blipHash, bli
             table.insert(blips, { societyBlip = created.value.id, blipSocietyId = blipSocietyId }) --So we can make sure to remove it on all clients and enable it on all clients
         end
     end
+end)
+
+-- A dissolved society: remove its blip, stop its prompt loop (which removes the prompt).
+RegisterNetEvent('bcc-society:SocietyRemoved', function(businessId)
+    removedSocieties[businessId] = true
+    OwnedSocieties[businessId] = nil
+    for k = #blips, 1, -1 do
+        if blips[k].blipSocietyId == businessId then
+            Toolkit:RemoveBlip(blips[k].societyBlip)
+            table.remove(blips, k)
+        end
+    end
+    DBG:Info("[SocietyRemoved] cleared society " .. tostring(businessId))
 end)
 
 AddEventHandler('onResourceStop', function(resourceName)

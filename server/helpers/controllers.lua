@@ -57,8 +57,15 @@ function DissolveSociety(society, actorSource)
         DB.exec("UPDATE bcc_society_employees SET status = 'pending_removal' WHERE business_id = ? AND employee_id = ?",
             society.business_id, employee.employee_id)
         SocietyJobs.Enqueue(society.business_id, employee.employee_id, 'fire', nil, actorSource)
+        local target = SocietyCharacters.FindSource(employee.employee_id)
+        if target then
+            NotifyClient(target, _U("youWereFired") .. society.business_name, "error", 4000)
+        end
     end
     SocietyJobs.Enqueue(society.business_id, society.owner_id, 'fire', nil, actorSource)
+
+    -- Every client removes the society's blip and stops its prompt.
+    TriggerClientEvent('bcc-society:SocietyRemoved', -1, society.business_id)
 
     local dissolved = SocietyOrganizations.Dissolve(society)
     if not dissolved.ok then
