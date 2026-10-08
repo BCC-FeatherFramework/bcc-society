@@ -85,7 +85,7 @@ RegisterServerEvent('bcc-society:PlayerHired', function(businessId, playerCharId
         playerCharId, businessId, employeeFullName, rankInfo.rank_name
     )
     SocietyJobs.Enqueue(businessId, playerCharId, 'hire', rankInfo.job_grade, _source)
-    devPrint("[PlayerHired]", hiringChar.charIdentifier, "hired", playerCharId, "at", businessId)
+    DBG:Info("[PlayerHired]", hiringChar.charIdentifier, "hired", playerCharId, "at", businessId)
     NotifyClient(_source, _U("hirePending"), "info", 4000)
 end)
 
@@ -113,7 +113,7 @@ RegisterServerEvent('bcc-society:FireEmployee', function(businessId, playerCharI
         NotifyClient(target, _U("youWereFired") .. societyData.business_name, "error", 4000)
         TriggerClientEvent('bcc-society:FiredFrom:' .. businessId, target)
     end
-    devPrint("[FireEmployee]", fireChar.charIdentifier, "fired", playerCharId, "from", businessId)
+    DBG:Info("[FireEmployee]", fireChar.charIdentifier, "fired", playerCharId, "from", businessId)
     NotifyClient(_source, _U("employeeFired"), "success", 4000)
 end)
 

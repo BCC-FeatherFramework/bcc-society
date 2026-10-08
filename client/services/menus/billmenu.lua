@@ -4,7 +4,7 @@ FeatherRPC:Register("bcc-society:OpenReceiptMenu", function(params)
         return -- Ignore if not meant for this player
     end
 
-    devPrint("[Client] Opening receipt menu with:" .. json.encode(params))
+    DBG:Info("[Client] Opening receipt menu with:" .. json.encode(params))
     OpenReceiptMenu(params)
 end)
 
@@ -71,7 +71,7 @@ function OpenReceiptMenu(receipt)
                 end
             end)
         else
-            devPrint("[Client] Invalid receipt or missing ID for deletion.")
+            DBG:Warning("[Client] Invalid receipt or missing ID for deletion.")
             Notify(_U("invalidReceipt"), "error", 4000)
         end
     end)
@@ -96,7 +96,7 @@ end
 
 function OpenBillingMenu(societyData)
     local playerListPage = GetPlayerListMenuPage(false, function(data)
-        devPrint("[BillingCommand] Selected target player:" .. data.source)
+        DBG:Info("[BillingCommand] Selected target player:" .. data.source)
 
         local billAmountPage = BCCSocietyMenu:RegisterPage("bcc-society:billAmountPage")
 
@@ -113,7 +113,7 @@ function OpenBillingMenu(societyData)
             style = {}
         }, function(data)
             billAmount = data.value
-            devPrint("[BillingCommand] Bill amount entered:" .. billAmount)
+            DBG:Info("[BillingCommand] Bill amount entered:" .. billAmount)
         end)
 
         local billDescription = ""
@@ -125,7 +125,7 @@ function OpenBillingMenu(societyData)
             style = {}
         }, function(data)
             billDescription = data.value
-            devPrint("[BillingCommand] Bill description entered:" .. billDescription)
+            DBG:Info("[BillingCommand] Bill description entered:" .. billDescription)
         end)
         billAmountPage:RegisterElement("line", {
             slot = "footer",
@@ -136,10 +136,10 @@ function OpenBillingMenu(societyData)
             slot = "footer",
             style = {}
         }, function()
-            devPrint("[BillingCommand] Confirm pressed. Validating input...")
+            DBG:Info("[BillingCommand] Confirm pressed. Validating input...")
 
             if not string.find(billAmount, "-") and not string.find(billAmount, "'") and not string.find(billAmount, '"') then
-                devPrint("[BillingCommand] Input is clean. Sending RPC: BillPlayer")
+                DBG:Info("[BillingCommand] Input is clean. Sending RPC: BillPlayer")
 
                 FeatherRPC:Call("bcc-society:BillPlayer", {
                     playerServerId = data.source,
@@ -148,16 +148,16 @@ function OpenBillingMenu(societyData)
                     societyId = societyData.business_id -- Add this!
                 }, function(success, errorMsg)
                     if success then
-                        devPrint("[BillingCommand] Bill sent.")
+                        DBG:Info("[BillingCommand] Bill sent.")
                         Notify(_U("billSent"), "success", 4000)
                     else
-                        devPrint("[BillingCommand] Billing failed:" .. tostring(errorMsg))
+                        DBG:Error("[BillingCommand] Billing failed:" .. tostring(errorMsg))
                         Notify(errorMsg or _U("billingFailed"), "error", 4000)
                     end
                 end)
                 BCCSocietyMenu:Close()
             else
-                devPrint("[BillingCommand] Input validation failed.")
+                DBG:Error("[BillingCommand] Input validation failed.")
                 Notify(_U("inputProtectionError"), "error", 4000)
             end
         end)
@@ -167,7 +167,7 @@ function OpenBillingMenu(societyData)
         })
         billAmountPage:RouteTo()
     end, function()
-        devPrint("[BillingCommand] Player list menu closed.")
+        DBG:Info("[BillingCommand] Player list menu closed.")
         BCCSocietyMenu:Close()
     end)
 

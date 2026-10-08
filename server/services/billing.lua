@@ -21,7 +21,7 @@ FeatherRPC:Register("bcc-society:BillPlayer", function(params, cb, src)
 
     local cost = ParseAmount(params.amount)
     if not cost then
-        devPrint("Invalid cost entered: " .. tostring(params.amount))
+        DBG:Warning("Invalid cost entered: " .. tostring(params.amount))
         return cb(false, _U("invalidAmount"))
     end
 
@@ -41,7 +41,7 @@ FeatherRPC:Register("bcc-society:BillPlayer", function(params, cb, src)
         biller = biller.firstname .. " " .. biller.lastname,
         description = description
     }, billed.source)
-    devPrint("[BillPlayer] bill", billId, "sent to", billed.charIdentifier)
+    DBG:Info("[BillPlayer] bill", billId, "sent to", billed.charIdentifier)
     return cb(true)
 end)
 

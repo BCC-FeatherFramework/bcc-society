@@ -47,7 +47,7 @@ RegisterServerEvent("bcc-society:LedgerManagement", function(businessId, amount,
     if result.ok then
         NotifyClient(_source, _U(type == "deposit" and "depositSuccess" or "withdrawSuccess"), "success", 4000)
     else
-        devPrint("[LedgerManagement]", type, "failed", result.code)
+        DBG:Error("[LedgerManagement]", type, "failed", result.code)
         NotifyClient(_source, SocietyEconomy.Message(result, type == "deposit" and "notEnoughCash" or "notEnoughFundsInLedger"), "error", 4000)
     end
 end)

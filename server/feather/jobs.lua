@@ -189,7 +189,7 @@ function SocietyJobs.OffDutyAll(characterId, exceptAssignmentId)
         if assignment.dutyState == 'on_duty' and assignmentId ~= exceptAssignmentId then
             local result = SocietyJobs.SetDuty(assignmentId, 'off_duty')
             if not result.ok then
-                devPrint('[OffDutyAll] failed', assignmentId, Describe(result))
+                DBG:Error('[OffDutyAll] failed', assignmentId, Describe(result))
             end
         end
     end
