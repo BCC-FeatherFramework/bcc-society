@@ -43,12 +43,12 @@ BCCSocietyMenu = FeatherMenu:RegisterMenu('BCC-Society:Menu', {
 -- Helper function for debugging in DevMode
 if Config.devMode then
     function devPrint(...)
-        local args = {...}
-        local msg = "^1[DEV MODE] ^4"
-        for _, v in ipairs(args) do
-            msg = msg .. tostring(v) .. " "
+        local args = { ... }
+        for i = 1, select('#', ...) do args[i] = tostring(args[i]) end
+        -- One print per line, each ending with ^0 so the color never carries over.
+        for line in (table.concat(args, " ") .. "\n"):gmatch("(.-)\n") do
+            print("^1[DEV MODE] ^4" .. line .. "^0")
         end
-        print(msg)
     end
 else
     function devPrint(...) end
