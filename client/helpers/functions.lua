@@ -143,6 +143,12 @@ function AddGradePicker(page, businessId, current, onSelect)
     end)
 end
 
+-- Asks the server each time (a staff role can be granted or revoked while the
+-- player is online) and tells the player when they are not allowed.
 function IsPlayerAdmin()
+    AdminAllowed = FeatherRPC:CallAsync("BCC-Society:AdminCheck") == true
+    if not AdminAllowed then
+        Notify(_U("noPermission"), "error", 4000)
+    end
     return AdminAllowed
 end
