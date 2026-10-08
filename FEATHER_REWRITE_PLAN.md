@@ -1,7 +1,7 @@
 # BCC Society: Feather rewrite plan
 
 **Status:** S0 done 2026-10-02. All D1–D8 recommendations accepted; work proceeds phase by phase (see §8).
-**Scope:** phase **J4** of the [Jobs master plan](../../%5Bfeather%5D/feather-framework-docs-main/feather-jobs/Feather_Jobs_Master_Plan.md). BCC Society becomes the reference consumer of `feather-jobs`.
+**Scope:** phase **J4** of the [Jobs master plan](https://github.com/FeatherFramework/feather-framework-docs/blob/main/feather-jobs/Feather_Jobs_Master_Plan.md). BCC Society becomes the reference consumer of `feather-jobs`.
 **Approach:** re-architect, **reusing the existing code**. Keep every file, menu, page flow, translation key and handler structure. Change only:
 
 - **Framework calls:** VORP, `bcc-utils` and feather-menu v1 calls go through small local Feather adapters.
