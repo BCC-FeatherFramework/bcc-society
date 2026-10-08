@@ -262,4 +262,5 @@ Feather.Locale.register("pl", {
     chatSuggestionOffDuty = "Zakończ służbę",
     chatSuggestionBill = "Wystaw rachunek od swojej organizacji",
     chatSuggestionReceipts = "Zobacz opłacone rachunki",
+    storageLimitTooHigh = "Limit magazynu jest za wysoki. Maksimum: ",
 })

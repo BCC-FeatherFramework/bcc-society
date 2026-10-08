@@ -22,7 +22,8 @@ local function SlotLimit(society)
             limit = limit + (tonumber(stage.slotIncrease) or 0)
         end
     end
-    return math.max(1, limit)
+    -- feather-inventory stores the slot count in a SMALLINT; never ask for more than the configured cap.
+    return math.max(1, math.min(limit, Config.MaxStorageSlots or 500))
 end
 
 -- Registers (or resizes) the society's container. Returns uuid, id.
