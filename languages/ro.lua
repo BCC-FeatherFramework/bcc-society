@@ -263,4 +263,5 @@ Feather.Locale.register("ro", {
     chatSuggestionOffDuty = "Ieși din tură",
     chatSuggestionBill = "Trimite o factură din partea societății",
     chatSuggestionReceipts = "Vezi chitanțele plătite",
+    storageLimitTooHigh = "Limita de stocare este prea mare. Maxim: ",
 })

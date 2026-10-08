@@ -94,8 +94,16 @@ RegisterServerEvent("bcc-society:AdminManageSociety", function(societyId, delete
             NotifyClient(_source, _U("jobTypeFixed"), "error", 4000)
         end
 
+        -- Storage size must fit feather-inventory (Config.MaxStorageSlots); keep the old one otherwise.
+        local invLimit = tonumber(societyInvLimit)
+        local maxSlots = Config.MaxStorageSlots or 500
+        if invLimit and (invLimit < 0 or invLimit > maxSlots) then
+            NotifyClient(_source, _U("storageLimitTooHigh") .. maxSlots, "error", 4000)
+            invLimit = nil
+        end
+
         DB.exec("UPDATE bcc_society SET tax_amount = ?, business_name = ?, inv_limit = ?, blip_hash = ? WHERE business_id = ?",
-            tonumber(societyTax) or society.tax_amount, societyName, tonumber(societyInvLimit) or society.inv_limit,
+            tonumber(societyTax) or society.tax_amount, societyName, invLimit or society.inv_limit,
             type(societyBlip) == "string" and societyBlip or society.blip_hash, societyId
         )
         local renamed = SocietyOrganizations.Rename(society, societyName)

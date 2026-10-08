@@ -263,4 +263,5 @@ Feather.Locale.register("en_us", {
     chatSuggestionOffDuty = "Go off duty",
     chatSuggestionBill = "Send a bill from your society",
     chatSuggestionReceipts = "View your paid receipts",
+    storageLimitTooHigh = "Storage limit is too high. Maximum: ",
 })

@@ -24,6 +24,10 @@ RegisterServerEvent("bcc-society:InsertSocietyToDB", function(name, ownerCharId,
     if taxAmount < 0 or invLimit < 0 then
         return NotifyClient(_source, _U("fillAllFields"), "error", 4000)
     end
+    local maxSlots = Config.MaxStorageSlots or 500
+    if invLimit > maxSlots then
+        return NotifyClient(_source, _U("storageLimitTooHigh") .. maxSlots, "error", 4000)
+    end
     if type(stages) ~= "string" or stages == "" then stages = "none" end
 
     -- The society stands where the creating admin stands.

@@ -23,6 +23,7 @@ Config = {
     toggleOnDutyCommandName = "onDuty",       -- Command to toggle duty
     toggleOffDutyCommandName = "offDuty",     -- Command to toggle duty
     allowBlips = true,                        -- Allow blips to be shown for societies
+    MaxStorageSlots = 500,                    -- Largest society storage in slots, upgrades included (feather-inventory stores up to 65535)
     toggleBlipCooldown = 10,                  -- Cooldown for toggling blips in seconds
     manageSocietyPromptKey = 0x4CC0E2FE,      -- Key to open the society management prompt
     taxesEnabled = true,                      -- Enable/Disable taxes
