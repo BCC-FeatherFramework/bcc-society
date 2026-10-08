@@ -375,12 +375,22 @@ AddEventHandler('onResourceStart', function(resource)
 end)
 
 -- Shutdown: everyone on duty in a society goes off duty (online or not).
-AddEventHandler('onResourceStop', function(resourceName)
-    if GetCurrentResourceName() ~= resourceName then
-        return
+-- Everyone starts off duty after bcc-society (re)starts. This runs on start, not
+-- on stop: a stopping resource cannot wait for feather-jobs to answer.
+CreateThread(function()
+    local waited = 0
+    while not SocietyJobs.ready and waited < 60000 do
+        Wait(500)
+        waited = waited + 500
     end
-    for _, playerId in ipairs(GetPlayers()) do
-        local character = SocietyCharacters.Get(playerId)
-        if character then SocietyJobs.OffDutyAll(character.charIdentifier) end
+    if not SocietyJobs.ready then return end
+    local members = DB.query([[
+        SELECT `owner_id` AS `character_id` FROM `bcc_society` WHERE `status` = 'active'
+        UNION
+        SELECT `employee_id` FROM `bcc_society_employees`
+    ]]) or {}
+    for _, member in ipairs(members) do
+        SocietyJobs.OffDutyAll(member.character_id)
     end
+    devPrint('[jobs] start-up duty reset for ' .. #members .. ' member(s)')
 end)
