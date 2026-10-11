@@ -103,7 +103,7 @@ Command('SocietyDevStatus', function(args)
     local snapshot = SocietyJobs.GetSnapshot(characterId)
     if not snapshot.ok then return out('Jobs unavailable:', Describe(snapshot)) end
     out(SocietyCharacters.GetFullName(characterId), characterId, 'revision', tostring(snapshot.value.revision))
-    if #snapshot.value.assignments == 0 then out('  no open assignments') end
+    if #snapshot.value.assignments == 0 then return out('  no open assignments') end
     for _, a in ipairs(snapshot.value.assignments) do
         out('  ' .. (a.assignmentId == snapshot.value.activeAssignmentId and '*' or ' '), a.jobKey, 'grade',
             tostring(a.gradeKey) .. '(' .. tostring(a.gradeOrdinal) .. ')', a.dutyState, 'rev', tostring(a.revision),
@@ -140,6 +140,11 @@ Command('SocietyDevRank', function(args)
     if not employee or employee.status == 'pending_removal' then return out('not an employee of this society') end
     local rank = society:GetRankInfo(args[3])
     if not rank then return out('rank not found:', args[3]) end
+    local current = society:GetRankInfo(employee.employee_rank)
+    if current and current.job_grade == rank.job_grade then
+        out('note: ' .. employee.employee_rank .. ' and ' .. rank.rank_name .. ' share grade ' .. tostring(rank.job_grade)
+            .. '; the Jobs grade will not change')
+    end
     DB.exec("UPDATE bcc_society_employees SET employee_rank = ? WHERE business_id = ? AND employee_id = ?",
         rank.rank_name, society:GetSocietyInfo().business_id, characterId)
     SocietyJobs.Enqueue(society:GetSocietyInfo().business_id, characterId, 'promote', rank.job_grade, nil)
