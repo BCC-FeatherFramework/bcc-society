@@ -52,7 +52,6 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     TriggerServerEvent('bcc-society:CollectPayment', societyData.business_id)
                     manageSocietyPage:RouteTo()
                 end)
-                paymentPage:RegisterElement("spacer", { size = "small" })
 
                 -- Add 'No' button to cancel the payment collection
                 paymentPage:RegisterElement("button", {

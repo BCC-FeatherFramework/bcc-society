@@ -82,7 +82,17 @@ end
 
 local Page = {}; Page.__index = Page
 
+-- Size of the spacer placed between two consecutive buttons in the same slot
+-- (small, medium or large; nil turns it off).
+local BUTTON_GAP = 'small'
+
 function Page:RegisterElement(elementType, spec, callback)
+    local slot = spec and spec.slot
+    if BUTTON_GAP and elementType == 'button' and self.lastType == 'button' and self.lastSlot == slot then
+        self.lastType = 'spacer'
+        self:RegisterElement('spacer', { size = BUTTON_GAP, slot = slot })
+    end
+    self.lastType, self.lastSlot = elementType, slot
     self.sequence = self.sequence + 1
     local v2Type, v2Spec, legacyChoices = adaptElement(elementType, spec, ('element_%d'):format(self.sequence))
     local wrapped = callback
@@ -112,7 +122,7 @@ function Menu:RegisterPage(key)
         for _, elementId in ipairs(page.elements) do
             result('RemoveElement', menuExport:RemoveElement(self.menuId, page.pageId, elementId))
         end
-        page.elements, page.sequence = {}, 0
+        page.elements, page.sequence, page.lastType, page.lastSlot = {}, 0, nil, nil
         return page
     end
     local value = result('CreatePage', menuExport:CreatePage(self.menuId, { key = key }))
