@@ -272,9 +272,12 @@ hire, fire, re-hire, bill sent and dissolve worked. Storage opens after the 500-
 equipped weapons are refused until unequipped. Ledger deposit and withdraw worked in game
 (wallet funded with feather-admin `/givemoney`; DBG showed 2948 + 1232 = 4180, then
 4180 - 1542 = 2638, each one Economy transfer).
+Taxes on the creation day (`Config.taxOnCreationDay`, `SocietyDevTaxes`): the day before was
+skipped ("due on day 11"); on the day sadas paid 1234 once (`taxes_paid` = 202611) and a repeat
+run did not charge it again; Doctor failed with `insufficient_funds`, stayed unpaid and retries
+(a failed transfer rolls back its idempotency reservation in Economy).
 
-**Not yet verified live:** payroll; bill acceptance and payment;
-taxes; storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
+**Not yet verified live:** payroll; bill acceptance and payment; storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
 blips on every client.
 
 ### Shared resources changed for this rewrite
