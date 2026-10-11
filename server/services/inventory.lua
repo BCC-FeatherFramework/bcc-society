@@ -39,8 +39,11 @@ local function EnsureStorage(society)
     local registered = inventory.RegisterInventory('bcc_society', society.business_id, society.business_name,
         false, nil, nil, society.owner_id, false, SlotLimit(society))
     if type(registered) ~= 'table' or registered.ok ~= true then
+        DBG:Error("[Storage] register for society", society.business_id, "failed:",
+            type(registered) == 'table' and registered.code or registered)
         return nil, nil, 'register_failed'
     end
+    DBG:Info("[Storage] society", society.business_id, "container", registered.value.uuid, "slots", SlotLimit(society))
     if society.inventory_id ~= registered.value.uuid then
         DB.exec("UPDATE bcc_society SET inventory_id = ? WHERE business_id = ?", registered.value.uuid, society.business_id)
     end
@@ -49,8 +52,10 @@ end
 
 RegisterServerEvent('bcc-society:openInventory', function(businessId)
     local _source = source
+    DBG:Info("[Storage] source", _source, "opens society", businessId)
     local allowed, _, society = HasSocietyPermission(_source, businessId, "rank_can_open_inventory")
     if not allowed then
+        DBG:Warning("[Storage] source", _source, "lacks rank_can_open_inventory")
         return NotifyClient(_source, _U("noPermission"), "error", 4000)
     end
     local info = society:GetSocietyInfo()
@@ -65,13 +70,19 @@ RegisterServerEvent('bcc-society:openInventory', function(businessId)
     local granted = inventory.GrantTemporaryAccess(_source, id, 60)
     local opened = type(granted) == 'table' and granted.ok and inventory.OpenInventory(_source, uuid, 'bcc_society') or granted
     if type(opened) ~= 'table' or opened.ok ~= true then
+        DBG:Error("[Storage] open failed:", type(opened) == 'table' and opened.code or opened)
         NotifyClient(_source, _U("storageUnavailable"), "error", 4000)
+    else
+        DBG:Success("[Storage] opened for source", _source)
     end
 end)
 
 FeatherRPC:Register("bcc-society:UpgradeInventory", function(params, cb, recSource)
     local allowed, char, society = HasSocietyPermission(recSource, params.socId, "rank_can_open_inventory")
-    if not allowed then return cb(false) end
+    if not allowed then
+        DBG:Warning("[UpgradeInventory] source", recSource, "lacks rank_can_open_inventory")
+        return cb(false)
+    end
     local info = society:GetSocietyInfo()
 
     -- Cost and slots come from the stored stage plan, never from the client.
@@ -80,21 +91,34 @@ FeatherRPC:Register("bcc-society:UpgradeInventory", function(params, cb, recSour
         if tonumber(stage.stage) == (tonumber(info.inventory_current_stage) or 0) + 1 then nextStage = stage end
     end
     local cost = nextStage and ParseAmount(nextStage.cost)
-    if not cost then return cb(false) end
+    DBG:Info("[UpgradeInventory] society", info.business_id, "stage", info.inventory_current_stage, "->",
+        nextStage and nextStage.stage, "cost", cost)
+    if not cost then
+        DBG:Warning("[UpgradeInventory] no next stage or invalid cost")
+        return cb(false)
+    end
 
     local wallet = SocietyEconomy.GetWallet(char.charIdentifier)
     local sink = SocietyEconomy.GetSystemSink()
-    if not wallet.ok or not sink.ok then return cb(false) end
+    if not wallet.ok or not sink.ok then
+        DBG:Error("[UpgradeInventory] money unavailable: wallet", wallet.code, "sink", sink.code)
+        return cb(false)
+    end
 
     local paid = SocietyEconomy.Transfer(wallet.value, sink.value, cost, 'society.storage_upgrade',
         { type = 'bcc_society', id = info.business_id },
         ('society:storage:%s:%s'):format(info.business_id, tonumber(nextStage.stage)), char)
-    if not paid.ok then return cb(false) end
+    if not paid.ok then
+        DBG:Warning("[UpgradeInventory] payment failed:", paid.code)
+        return cb(false)
+    end
 
     DB.exec("UPDATE bcc_society SET inventory_current_stage = ? WHERE business_id = ?",
         tonumber(nextStage.stage), info.business_id)
     info.inventory_current_stage = tonumber(nextStage.stage)
     pcall(EnsureStorage, info) -- resize now; opening resizes too
+    DBG:Success("[UpgradeInventory] society", info.business_id, "now stage", info.inventory_current_stage,
+        "slots", SlotLimit(info))
     return cb(true)
 end)
 

@@ -7,9 +7,11 @@
 local function CollectTaxes()
     local day = tonumber(os.date("%d"))
     local month = os.date("%Y-%m")
+    DBG:Info("[Taxes] check: day", day, "taxDay", Config.taxDay, "taxResetDay", Config.taxResetDay)
 
     if day == tonumber(Config.taxResetDay) then
         DB.exec("UPDATE bcc_society SET taxes_paid = 'false' WHERE status = 'active'")
+        DBG:Info("[Taxes] reset day: every active society marked unpaid")
         return
     end
     if day ~= tonumber(Config.taxDay) then return end
@@ -21,8 +23,10 @@ local function CollectTaxes()
 
     for _, society in ipairs(DB.query("SELECT * FROM bcc_society WHERE status = 'active' AND taxes_paid = 'false'") or {}) do
         local amount = tonumber(society.tax_amount) or 0
+        DBG:Info("[Taxes] society", society.business_id, society.business_name, "owes", amount)
         if amount <= 0 then
             DB.exec("UPDATE bcc_society SET taxes_paid = 'true' WHERE business_id = ?", society.business_id)
+            DBG:Info("[Taxes] society", society.business_id, "has no tax; marked paid")
         else
             local treasury = SocietyEconomy.EnsureTreasury(society)
             local paid = treasury.ok and SocietyEconomy.Transfer(treasury.value, sink.value, amount, 'society.tax',

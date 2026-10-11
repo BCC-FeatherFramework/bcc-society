@@ -25,6 +25,11 @@ local function AccrueFor(character)
                     DB.exec([[UPDATE bcc_society_employees SET employee_payment = employee_payment + ?
                         WHERE business_id = ? AND employee_id = ?]],
                         math.max(0, tonumber(employee.rank_pay) or 0), employee.business_id, character.charIdentifier)
+                    DBG:Success("[Payroll] accrued", employee.rank_pay, "for", character.charIdentifier,
+                        "society", employee.business_id, "rank", employee.employee_rank)
+                else
+                    DBG:Info("[Payroll]", character.charIdentifier, "society", employee.business_id, "on duty",
+                        minutes .. "/" .. interval, "min")
                 end
                 onDutyMinutes[key] = minutes
             end
@@ -55,6 +60,7 @@ FeatherRPC:Register("bcc-society:GetPaymentAmount", function(params, cb, recSour
     local employeeData = DB.one("SELECT employee_payment FROM bcc_society_employees WHERE employee_id = ? AND business_id = ? AND status = 'active'",
         char.charIdentifier, params.socId)
     local paymentAmount = employeeData and tonumber(employeeData.employee_payment)
+    DBG:Info("[GetPaymentAmount]", char.charIdentifier, "society", params.socId, "owed", paymentAmount)
     if paymentAmount and paymentAmount > 0 then
         cb(paymentAmount)
     else
@@ -70,7 +76,9 @@ RegisterServerEvent("bcc-society:CollectPayment", function(businessId)
     local currentTime = os.time()
     local cooldownTime = 120
     local last = playerPaymentCooldowns[char.charIdentifier]
+    DBG:Info("[CollectPayment] source", _source, char.charIdentifier, "society", businessId)
     if last and currentTime - last < cooldownTime then
+        DBG:Warning("[CollectPayment] cooldown,", cooldownTime - (currentTime - last), "s left")
         return NotifyClient(_source, _U('cooldownActive'), "error", 4000)
     end
 
@@ -78,16 +86,19 @@ RegisterServerEvent("bcc-society:CollectPayment", function(businessId)
     local employeeData = DB.one("SELECT employee_payment FROM bcc_society_employees WHERE employee_id = ? AND business_id = ? AND status = 'active'",
         char.charIdentifier, businessId)
     if not society or not employeeData then
+        DBG:Warning("[CollectPayment] not an active employee of an active society")
         return NotifyClient(_source, _U('youCannotCollect'), "error", 4000)
     end
     local payAmount = tonumber(employeeData.employee_payment)
     if not payAmount or payAmount <= 0 then
+        DBG:Info("[CollectPayment] nothing owed")
         return NotifyClient(_source, _U('youCannotCollect'), "error", 4000)
     end
 
     local treasury = SocietyEconomy.EnsureTreasury(society)
     local wallet = SocietyEconomy.GetWallet(char.charIdentifier)
     if not treasury.ok or not wallet.ok then
+        DBG:Error("[CollectPayment] money unavailable: treasury", treasury.code, "wallet", wallet.code)
         return NotifyClient(_source, _U("moneyUnavailable"), "error", 4000)
     end
 
@@ -95,6 +106,7 @@ RegisterServerEvent("bcc-society:CollectPayment", function(businessId)
     local reserved = DB.exec([[UPDATE bcc_society_employees SET employee_payment = employee_payment - ?
         WHERE employee_id = ? AND business_id = ? AND employee_payment >= ?]], payAmount, char.charIdentifier, businessId, payAmount)
     if tonumber(reserved) ~= 1 then
+        DBG:Warning("[CollectPayment] owed amount changed while collecting")
         return NotifyClient(_source, _U('youCannotCollect'), "error", 4000)
     end
 
@@ -103,9 +115,11 @@ RegisterServerEvent("bcc-society:CollectPayment", function(businessId)
     if not paid.ok then
         DB.exec([[UPDATE bcc_society_employees SET employee_payment = employee_payment + ?
             WHERE employee_id = ? AND business_id = ?]], payAmount, char.charIdentifier, businessId)
+        DBG:Error("[CollectPayment] payment failed, owed", payAmount, "restored:", paid.code)
         return NotifyClient(_source, SocietyEconomy.Message(paid, "insufficientFunds"), "error", 4000)
     end
 
     playerPaymentCooldowns[char.charIdentifier] = currentTime
+    DBG:Success("[CollectPayment] paid", payAmount, "to", char.charIdentifier, "from society", businessId)
     NotifyClient(_source, _U('youHaveCollected') .. tostring(payAmount), "success", 4000)
 end)
