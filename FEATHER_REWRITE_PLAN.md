@@ -279,8 +279,11 @@ run did not charge it again; Doctor failed with `insufficient_funds`, stayed unp
 Bills with a second player: bill 4 (1500) and bill 5 (100) were accepted and paid into the
 treasury (2638 -> 4138 -> 4238, one `society.bill` transfer each); bill 6 was declined and moved
 no money. The bill window needed the menu-recovery fix (feather-menu-v2 had lost the menu).
+Payroll: with rank qwer at 10 every 1 minute, on-duty minutes accrued 10 per minute; the
+employee collected 10 from the treasury (`society.payroll`, owed went back to 0) and accrual
+continued.
 
-**Not yet verified live:** payroll; bill expiry (2 minutes); storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
+**Not yet verified live:** collect cooldown and off-duty stop; bill expiry (2 minutes); storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
 blips on every client.
 
 ### Shared resources changed for this rewrite

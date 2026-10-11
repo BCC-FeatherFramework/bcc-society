@@ -37,18 +37,14 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                 })
 
                 -- Display payment confirmation message with amount
-                paymentPage:RegisterElement("html", {
-                    value = string.format([[
-                        <div style="font-family: Arial, sans-serif; padding: 10px;">
-                            <p style="font-size: 14px; color: #333;">Are you sure you want to collect your payment of $%s?</p>
-                        </div>
-                    ]], tostring(paymentAmount)),
+                paymentPage:RegisterElement("textdisplay", {
+                    value = _U('colectPaymentQuestion') .. "$" .. tostring(paymentAmount) .. "?",
                     style = {}
                 })
 
                 -- Add 'Yes' button to confirm payment collection
                 paymentPage:RegisterElement("button", {
-                    label = "Yes",
+                    label = _U('yes'),
                     style = {}
                 }, function()
                     -- Trigger the server event to collect payment for the player
@@ -58,7 +54,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
 
                 -- Add 'No' button to cancel the payment collection
                 paymentPage:RegisterElement("button", {
-                    label = "No",
+                    label = _U('no'),
                     style = {}
                 }, function()
                     -- Return to the previous menu without collecting payment
