@@ -261,7 +261,19 @@ Two fixes were needed first:
 - The shared resources had to be restarted to load the new trust entries.
 - The manifest loaded some files twice (an explicit entry plus a glob, inherited from the original). It now lists each file once.
 
-**Not yet verified live:** hire, promote and fire (run `SocietyLiveTest <owner> <employee>` with two players); ledger deposit and withdraw; payroll; billing; taxes; storage; and the in-game menus.
+**Live checkpoint (2026-10-11):** `SocietyLiveTest` passed **12/12** with two players (hire,
+promote, fire). With the `SocietyDev*` console tools, offline hire, promote (nurse(0) to
+doctor(10), same assignment, revision 3 to 4) and fire passed; a restart right after a queued
+workflow left `SocietyReconcile` at 0 open; duty on/off and disconnect (`SocietyDevLeave`)
+behaved and never changed the job or grade; two societies kept separate assignments, the
+active job switched, and firing from one ended only that job. In game: create, rename, ranks,
+hire, fire, re-hire, bill sent and dissolve worked. Storage opens after the 500-slot cap fix
+(a 123456 limit was rejected by feather-inventory's SMALLINT); items move in and out,
+equipped weapons are refused until unequipped.
+
+**Not yet verified live:** ledger deposit and withdraw; payroll; bill acceptance and payment;
+taxes; storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
+blips on every client.
 
 ### Shared resources changed for this rewrite
 

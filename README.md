@@ -30,7 +30,9 @@ The rewrite plan, decisions and progress are in [FEATHER_REWRITE_PLAN.md](FEATHE
 - **Payroll:** wages accrue on the server only while on duty; employees collect them from the treasury.
 - **Billing:** `/bill` sends a bill; the customer accepts or declines before any money moves. `/receipts` lists paid receipts.
 - **Taxes:** paid from the treasury on `Config.taxDay`, once per month. A society that can't pay is reported, not deleted.
-- **Storage:** a shared feather-inventory container with paid upgrade stages.
+- **Storage:** a shared feather-inventory container with paid upgrade stages, up to
+  `Config.MaxStorageSlots` (500). Equipped weapons cannot be stored: unequip them first
+  (feather-inventory shows "Unequip this item before moving or removing it.").
 - **Blips and prompts:** through feather-toolkit.
 - **Translations:** English (`en_us`), Polish (`pl`) and Romanian (`ro`), registered through feather-core.
 
