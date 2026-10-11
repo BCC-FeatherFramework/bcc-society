@@ -1,5 +1,5 @@
 Config = {
-    devMode = true,                             -- Enable/Disable Dev Mode (False on live)
+    devMode = false,                            -- Enable/Disable Dev Mode (False on live)
     defaultlang = "en_us",                      -- Language used by the server (en_us, pl, ro)
     NotifyStyle = "right",                      -- feather-notify style used for player messages
     createSocietyCommandName = "createSociety", -- Command to create a society

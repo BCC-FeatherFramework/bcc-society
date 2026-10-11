@@ -1,6 +1,6 @@
 # BCC Society: Feather rewrite plan
 
-**Status:** S0 done 2026-10-02. All D1–D8 recommendations accepted; work proceeds phase by phase (see §8).
+**Status:** ✅ Done 2026-10-11, released as v2.0.0. Every flow passed live with two players (see §9). All D1–D8 recommendations accepted.
 **Scope:** phase **J4** of the [Jobs master plan](https://github.com/FeatherFramework/feather-framework-docs/blob/main/feather-jobs/Feather_Jobs_Master_Plan.md). BCC Society becomes the reference consumer of `feather-jobs`.
 **Approach:** re-architect, **reusing the existing code**. Keep every file, menu, page flow, translation key and handler structure. Change only:
 
@@ -254,6 +254,7 @@ Exit for J4 overall (Jobs plan gates): multiple societies don't overwrite each o
 | **S5** Money | ✅ Code complete | `server/feather/economy.lua`, `ledger.lua`, `payroll.lua` (server accrual), `billing.lua` (customer accepts), `taxes.lua` (daily loop, monthly idempotency) |
 | **S6** Storage | ✅ Code complete | `inventory.lua`: one feather-inventory container per society; paid upgrades |
 | **S7** Tests and docs | ✅ Code complete | `SocietyLiveTest`, README |
+| **S8** Live acceptance | ✅ Done 2026-10-11 | Two players: every flow below; v2.0.0 tagged |
 
 **Live checkpoint (2026-10-02):** `SocietyLiveTest 1` passed **9/9** on the dev server: organization link, owner assignment at the owner grade, duty on/off, treasury read, dissolve (owner job ended, organization dissolved).
 
@@ -283,8 +284,12 @@ Payroll: with rank qwer at 10 every 1 minute, on-duty minutes accrued 10 per min
 employee collected 10 from the treasury (`society.payroll`, owed went back to 0) and accrual
 continued.
 
-**Not yet verified live:** collect cooldown and off-duty stop; bill expiry (2 minutes); storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
-blips on every client.
+Also verified live on 2026-10-11: a second collection inside the cooldown is refused and wages
+stop off duty; a bill left unanswered for 2 minutes expires without moving money; storage keeps
+its items across a restart and a paid upgrade adds its slots; dissolving removes the prompt and
+blip on both players' screens and fires the employees.
+
+**Live acceptance complete.** No flow is left unverified.
 
 ### Shared resources changed for this rewrite
 
@@ -300,7 +305,7 @@ blips on every client.
 
 - **Receipt item:** paid receipts are a `/receipts` list. The old `bcc_society_receipt` item needs an item definition in feather-inventory before it can return.
 - **Storage upgrade:** charged to the player's wallet, as in the original; it could move to the treasury later.
-- **J5:** bcc-doorlocks, bcc-craft and bcc-housing still read `character.job` and should move to `CheckAssignment`.
+- **J5:** bcc-doorlocks and bcc-craft use `CheckAssignment` since their 2.0.0 ports; bcc-housing still reads `character.job` (not ported).
 
 ### First live run
 
