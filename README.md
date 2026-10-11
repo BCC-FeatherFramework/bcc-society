@@ -172,6 +172,25 @@ The job type is fixed after creation. Dissolving a society ends every member's j
 
 ---
 
+## Development tools (dev mode)
+
+With `Config.devMode = true`, these server-console commands stand in for a second
+player. They act on any character, online or offline, given as a server ID or a
+character UUID, and use the same membership and feather-jobs paths as the menus.
+
+| Command | Purpose |
+|---|---|
+| `SocietyDevChars` | List online players and every society member with their character UUIDs |
+| `SocietyDevStatus <character>` | Show the character's feather-jobs assignments (job, grade, duty, active) |
+| `SocietyDevHire <society id> <character> [rank]` | Hire (entry rank when omitted) |
+| `SocietyDevRank <society id> <character> <rank>` | Change rank and Jobs grade |
+| `SocietyDevFire <society id> <character>` | Fire |
+| `SocietyDevDuty <character> <on\|off> [society id]` | Put on or off duty |
+| `SocietyDevSwitch <character> <society id>` | Make that society's job the active one |
+| `SocietyDevLeave <character>` | Do what a disconnect does: take every society job off duty |
+
+---
+
 ## Configuration
 
 See [config.lua](config.lua). The parts specific to Feather:
