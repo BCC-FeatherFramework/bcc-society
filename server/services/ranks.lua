@@ -4,13 +4,17 @@ end
 
 RegisterServerEvent("bcc-society:RankManagement", function(type, businessId, rankName, rankLabel, rankPay, payIncrement, toggleBlip, withdraw, deposit, editRanks, manageEmployees, openInventory, canManageStore, rankJobGrade, rankCanBillPlayers, rankCanSwitchJob)
     local _source = source
+    DBG:Info("[RankManagement] source", _source, type, "rank", rankName, "society", businessId, "pay", rankPay,
+        "every", payIncrement, "min, grade", rankJobGrade)
     local allowed, char, society = HasSocietyPermission(_source, businessId, "rank_can_edit_ranks")
     if not allowed then
+        DBG:Warning("[RankManagement] source", _source, "lacks rank_can_edit_ranks")
         return NotifyClient(_source, _U("noPermission"), "error", 4000)
     end
     local info = society:GetSocietyInfo()
 
     if _G.type(rankName) ~= "string" or rankName == "" or #rankName > 100 then
+        DBG:Warning("[RankManagement] invalid rank name")
         return NotifyClient(_source, _U("fillAllFields"), "error", 4000)
     end
 
@@ -18,6 +22,7 @@ RegisterServerEvent("bcc-society:RankManagement", function(type, businessId, ran
         rankPay = tonumber(rankPay)
         payIncrement = tonumber(payIncrement)
         if not rankPay or rankPay < 0 or rankPay % 1 ~= 0 or not payIncrement or payIncrement < 1 or payIncrement % 1 ~= 0 then
+            DBG:Warning("[RankManagement] pay must be a whole number >= 0 and the interval a whole number >= 1")
             return NotifyClient(_source, _U("fillAllFields"), "error", 4000)
         end
         if _G.type(rankLabel) ~= "string" or rankLabel == "" then rankLabel = rankName end
@@ -26,6 +31,7 @@ RegisterServerEvent("bcc-society:RankManagement", function(type, businessId, ran
         -- grade is reserved for the owner.
         local job = SocietyJobs.JobConfig(info.society_job)
         if not SocietyJobs.HasGrade(info.society_job, rankJobGrade) or (job and rankJobGrade == job.ownerGrade) then
+            DBG:Warning("[RankManagement] grade", rankJobGrade, "is not a valid non-owner grade of", info.society_job)
             return NotifyClient(_source, _U("invalidRankGrade"), "error", 4000)
         end
     end
@@ -54,6 +60,7 @@ RegisterServerEvent("bcc-society:RankManagement", function(type, businessId, ran
                 SocietyJobs.Enqueue(businessId, employee.employee_id, 'promote', rankJobGrade, _source)
             end
         end
+        DBG:Success("[RankManagement] rank", rankName, "saved: pay", rankPay, "every", payIncrement, "min")
         NotifyClient(_source, _U("rankUpdated"), "success", 4000)
 
     elseif type == "delete" then
