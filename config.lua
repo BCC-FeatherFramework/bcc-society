@@ -29,6 +29,7 @@ Config = {
     taxesEnabled = true,                      -- Enable/Disable taxes
     taxDay = 26,                              -- Day of the month to collect taxes
     taxResetDay = 27,                         -- Make sure this is set to a valid date 1 day after the tax day
+    taxOnCreationDay = true,                  -- true: each society pays monthly on the day it was created (last day of shorter months); taxDay/taxResetDay are then unused
     openMenuRadius = 2,                       -- Radius to open the society management menu (Can not be larger than 49)
     billCommandName = "bill",                 -- Command to open the bill menu
     adminMenuCommandName = "manageSocieties", -- Command to open the admin menu

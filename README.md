@@ -29,7 +29,10 @@ The rewrite plan, decisions and progress are in [FEATHER_REWRITE_PLAN.md](FEATHE
 - **Ledger:** deposit and withdraw between your wallet and the society treasury, gated by rank permission.
 - **Payroll:** wages accrue on the server only while on duty; employees collect them from the treasury.
 - **Billing:** `/bill` sends a bill; the customer accepts or declines before any money moves. `/receipts` lists paid receipts.
-- **Taxes:** paid from the treasury on `Config.taxDay`, once per month. A society that can't pay is reported, not deleted.
+- **Taxes:** paid from the treasury once per month. With `Config.taxOnCreationDay = true` (default) each
+  society pays on the day of the month it was created (the last day of shorter months), starting the month
+  after creation; if the server was down that day it pays at the next hourly check. With `false`, every
+  society pays on `Config.taxDay`. A society that can't pay is reported to its owner, not deleted.
 - **Storage:** a shared feather-inventory container with paid upgrade stages, up to
   `Config.MaxStorageSlots` (500). Equipped weapons cannot be stored: unequip them first
   (feather-inventory shows "Unequip this item before moving or removing it.").
@@ -190,6 +193,7 @@ character UUID, and use the same membership and feather-jobs paths as the menus.
 | `SocietyDevDuty <character> <on\|off> [society id]` | Put on or off duty |
 | `SocietyDevSwitch <character> <society id>` | Make that society's job the active one |
 | `SocietyDevLeave <character>` | Do what a disconnect does: take every society job off duty |
+| `SocietyDevTaxes [YYYY-MM-DD]` | Run the tax check now, as if it were that date (moves real money; each society still pays at most once per month) |
 
 ---
 

@@ -13,6 +13,7 @@
 --   SocietyDevDuty   <character> <on|off> [society id]
 --   SocietyDevSwitch <character> <society id>        make that society's job the active one
 --   SocietyDevLeave  <character>                     what a disconnect does: everything off duty
+--   SocietyDevTaxes  [YYYY-MM-DD]                    run the tax check now, as if it were that date
 
 if not Config.devMode then return end
 
@@ -198,5 +199,21 @@ Command('SocietyDevLeave', function(args)
     out('everything off duty for', SocietyCharacters.GetFullName(characterId), '(as on disconnect)')
 end)
 
+Command('SocietyDevTaxes', function(args)
+    local now = os.time()
+    if args[1] then
+        local year, month, day = args[1]:match('^(%d%d%d%d)%-(%d%d)%-(%d%d)$')
+        if not year then return out('usage: SocietyDevTaxes [YYYY-MM-DD]') end
+        now = os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(day), hour = 12 })
+    end
+    if not SocietyJobs.ready then return out('not ready yet') end
+    out('tax check as of', os.date('%Y-%m-%d', now), Config.taxOnCreationDay and '(creation-day mode)' or '(taxDay mode)',
+        '- this moves real money')
+    SocietyTaxes.Collect(now)
+    for _, row in ipairs(DB.query("SELECT business_id, business_name, taxes_paid, tax_amount FROM bcc_society WHERE status = 'active'") or {}) do
+        out('  society', row.business_id, row.business_name, 'tax', row.tax_amount, 'taxes_paid', row.taxes_paid)
+    end
+end)
+
 out('development commands registered: SocietyDevChars, SocietyDevStatus, SocietyDevHire, SocietyDevRank,',
-    'SocietyDevFire, SocietyDevDuty, SocietyDevSwitch, SocietyDevLeave')
+    'SocietyDevFire, SocietyDevDuty, SocietyDevSwitch, SocietyDevLeave, SocietyDevTaxes')
