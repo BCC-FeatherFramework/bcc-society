@@ -10,7 +10,9 @@ Config = {
         allowConsole = true,
         capability = 'staff.society.manage',
         role = 'staff.society.admin',
-        staffRoles = { 'staff.admin.owner', 'staff.admin.administrator' }
+        -- Feather Admin capabilities that also count as staff here. staff.admin.audit.search
+        -- is held by Admin administrators and owners (feather-admin configs/permissions.lua).
+        staffCapabilities = { 'staff.admin.audit.search' }
     },
     -- Characters holding one of these feather-jobs jobs may also administer societies.
     AllowedJobs = { 'societymanager' },

@@ -99,14 +99,19 @@ function SocietyAuthority.IsAllowed(src)
         or type(session.value.characterId) ~= 'string' then
         return false, 'unauthenticated'
     end
-    if GetResourceState('feather-admin') == 'started' then
-        local called, staff = pcall(function()
-            return exports['feather-admin']:GetStaffRole(src)
-        end)
-        if called and type(staff) == 'table' and staff.ok == true and type(staff.value) == 'table' then
-            for _, allowedRole in ipairs(adminConfig().staffRoles or {}) do
-                if staff.value.roleKey == allowedRole then return true, 'authority_staff_role' end
-            end
+    -- Feather Admin staff: Admin grants its roles capabilities named
+    -- staff.admin.<action>. A character holding one of the configured ones (by
+    -- default one that only administrators and owners get) is allowed.
+    for _, capability in ipairs(adminConfig().staffCapabilities or {}) do
+        local staff = exports['feather-authority']:Evaluate({
+            subjectType = 'character',
+            subjectId = session.value.characterId,
+            capabilityKey = capability,
+            scopeType = 'server'
+        })
+        if type(staff) == 'table' and staff.ok == true and type(staff.value) == 'table'
+            and staff.value.allowed == true then
+            return true, 'admin_staff:' .. capability
         end
     end
     local decision = exports['feather-authority']:Evaluate({
