@@ -41,6 +41,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     value = _U('colectPaymentQuestion') .. "$" .. tostring(paymentAmount) .. "?",
                     style = {}
                 })
+                paymentPage:RegisterElement("spacer", { size = "medium" })
 
                 -- Add 'Yes' button to confirm payment collection
                 paymentPage:RegisterElement("button", {
@@ -51,6 +52,7 @@ function ManageSocietyMenu(societyData, societyCoordsVector3, isOwner)
                     TriggerServerEvent('bcc-society:CollectPayment', societyData.business_id)
                     manageSocietyPage:RouteTo()
                 end)
+                paymentPage:RegisterElement("spacer", { size = "small" })
 
                 -- Add 'No' button to cancel the payment collection
                 paymentPage:RegisterElement("button", {
