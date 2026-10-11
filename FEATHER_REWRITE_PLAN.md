@@ -269,9 +269,10 @@ behaved and never changed the job or grade; two societies kept separate assignme
 active job switched, and firing from one ended only that job. In game: create, rename, ranks,
 hire, fire, re-hire, bill sent and dissolve worked. Storage opens after the 500-slot cap fix
 (a 123456 limit was rejected by feather-inventory's SMALLINT); items move in and out,
-equipped weapons are refused until unequipped.
+equipped weapons are refused until unequipped. Ledger deposit worked in game (wallet funded
+with feather-admin `/givemoney`).
 
-**Not yet verified live:** ledger deposit and withdraw; payroll; bill acceptance and payment;
+**Not yet verified live:** ledger withdraw; payroll; bill acceptance and payment;
 taxes; storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
 blips on every client.
 
