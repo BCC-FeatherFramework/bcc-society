@@ -276,8 +276,11 @@ Taxes on the creation day (`Config.taxOnCreationDay`, `SocietyDevTaxes`): the da
 skipped ("due on day 11"); on the day sadas paid 1234 once (`taxes_paid` = 202611) and a repeat
 run did not charge it again; Doctor failed with `insufficient_funds`, stayed unpaid and retries
 (a failed transfer rolls back its idempotency reservation in Economy).
+Bills with a second player: bill 4 (1500) and bill 5 (100) were accepted and paid into the
+treasury (2638 -> 4138 -> 4238, one `society.bill` transfer each); bill 6 was declined and moved
+no money. The bill window needed the menu-recovery fix (feather-menu-v2 had lost the menu).
 
-**Not yet verified live:** payroll; bill acceptance and payment; storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
+**Not yet verified live:** payroll; bill expiry (2 minutes); storage persistence across a restart and paid upgrades; dissolve cleanup of prompts and
 blips on every client.
 
 ### Shared resources changed for this rewrite
