@@ -299,7 +299,7 @@ blip on both players' screens and fires the employees.
 | feather-organizations `config.lua` | `bcc-society` in `trustedCreators`, `trustedMutators`, `trustedReaders`; `feather-jobs` in `trustedReaders` |
 | feather-authority `config.lua` | `bcc-society` in the five lists `bcc-banks` uses |
 | feather-admin `configs/service_policy.lua` | Jobs and Organizations actions for `bcc-society` |
-| feather-economy | **LOCAL ADDITION**: `EnsureOperatedTreasury` (api.lua), `society.*` reasons in `SocietyTransferAllowed` (journal.lua), `trustedTreasuryOperators` plus `bcc-society` in reader/provisioner/transactor lists (config.lua). **The Economy owner should review these.** |
+| feather-economy | **LOCAL ADDITION** (operated accounts proposal): `EnsureOperatedTreasury` and `RegisterOperatedReasons` (api.lua, services/operators.lua); bcc-society registers its `society.*` codes on start and Economy checks them against fixed movement shapes; `trustedTreasuryOperators` plus `bcc-society` in reader/provisioner/transactor lists (config.lua). **The Economy owner should review these.** |
 
 ### Known gaps
 

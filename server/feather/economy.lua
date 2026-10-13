@@ -1,8 +1,9 @@
 -- bcc-society's boundary to feather-economy.
 --
 -- bcc-society keeps no balances. A society's ledger is its organization's
--- dollars treasury, bound to bcc-society with EnsureOperatedTreasury; Economy
--- only accepts society.* movements against a treasury bound to this resource.
+-- dollars treasury, bound to bcc-society with EnsureOperatedTreasury. bcc-society
+-- registers its reason codes with Economy on start (REASONS); Economy accepts them
+-- only in their registered shapes and only against a treasury bound to this resource.
 -- bcc-society amounts are whole dollars; Economy amounts are cents.
 
 SocietyEconomy = {}
@@ -10,6 +11,15 @@ SocietyEconomy = {}
 local RESOURCE = 'feather-economy'
 local CURRENCY = 'dollars'
 local treasuries = {} -- business_id -> treasury account id
+
+-- Reason code -> Economy movement shape (feather-economy README "Operated accounts").
+local REASONS = {
+    ['society.deposit'] = 'actor_wallet_to_operated',  -- member's wallet into the ledger
+    ['society.bill'] = 'actor_wallet_to_operated',     -- billed player pays the society
+    ['society.withdraw'] = 'operated_to_actor_wallet', -- ledger into the member's own wallet
+    ['society.payroll'] = 'operated_to_wallet',        -- wages to an employee's wallet
+    ['society.tax'] = 'operated_to_sink'               -- society tax leaves the economy
+}
 
 local function Economy(operation, request, context)
     if GetResourceState(RESOURCE) ~= 'started' then
@@ -126,6 +136,21 @@ function SocietyEconomy.Message(result, insufficientKey)
     return _U("transactionFailed")
 end
 
+function SocietyEconomy.RegisterReasons()
+    local result = Economy('RegisterOperatedReasons', { reasons = REASONS })
+    if result.ok then
+        DBG:Info("[Economy] society reasons registered:", result.value.registered)
+    else
+        DBG:Error("[Economy] society reason registration failed:", result.code, result.message)
+    end
+    return result
+end
+
+CreateThread(SocietyEconomy.RegisterReasons)
+
 AddEventHandler('onResourceStart', function(resource)
-    if resource == RESOURCE then treasuries = {} end
+    if resource == RESOURCE then
+        treasuries = {}
+        CreateThread(SocietyEconomy.RegisterReasons)
+    end
 end)

@@ -108,12 +108,14 @@ Access = {
 ```
 
 **feather-economy/config.lua** (keep the existing entries in each group). `trustedTreasuryOperators`
-exists only in a feather-economy build that includes `EnsureOperatedTreasury`; without it the
-society ledger, payroll, billing and taxes are unavailable.
+exists only in a feather-economy build with the operated accounts extension
+(`EnsureOperatedTreasury`, `RegisterOperatedReasons`); without it the society ledger, payroll,
+billing and taxes are unavailable. bcc-society registers its own reason codes (`society.deposit`,
+`society.bill`, `society.withdraw`, `society.payroll`, `society.tax`) on start; nothing else to configure.
 
 ```lua
 Access = {
-    -- Callers that may bind and operate an organization treasury.
+    -- May bind organization treasuries and register reason codes that move them.
     -- They must also be in trustedTransactors.
     trustedTreasuryOperators = { ['bcc-society'] = true },
     trustedReaders = { ['feather-economy'] = true, --[[ ... ]] ['bcc-society'] = true },
